@@ -119,7 +119,9 @@ export default function HackathonAdminWorkspace() {
   const [resolvingQueueId, setResolvingQueueId] = useState(null);
 
   // Multi-Hackathon Operational Isolation State (Phase M5)
-  const [selectedHackathonId, setSelectedHackathonId] = useState("can-hackathon-2026");
+  const [selectedHackathonId, setSelectedHackathonId] = useState(() => {
+    return localStorage.getItem("adminSelectedHackathonId") || "";
+  });
   const [availableHackathons, setAvailableHackathons] = useState([]);
 
   // Phase M9: Analytics State
@@ -566,7 +568,7 @@ export default function HackathonAdminWorkspace() {
       setCalculatingResults(true);
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/calculate`,
-        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { hackathonId: selectedHackathonId },
         { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
@@ -596,7 +598,7 @@ export default function HackathonAdminWorkspace() {
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/${winnerModalResult.teamId}/assign-winner`,
         {
-          hackathonId: selectedHackathonId || "can-hackathon-2026",
+          hackathonId: selectedHackathonId,
           category: winnerCategoryInput || null,
           prize: winnerPrizeInput || null,
           isWinner: isWinnerInput,
@@ -636,7 +638,7 @@ export default function HackathonAdminWorkspace() {
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/resolve-tie`,
         {
-          hackathonId: selectedHackathonId || "can-hackathon-2026",
+          hackathonId: selectedHackathonId,
           teamOrders: tieOrders.map((t) => ({ teamId: t.teamId, rank: Number(t.rank) })),
           tieBreakReason: tieBreakReason.trim(),
         },
@@ -659,7 +661,7 @@ export default function HackathonAdminWorkspace() {
       setApprovingResults(true);
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/approve`,
-        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { hackathonId: selectedHackathonId },
         { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
@@ -679,7 +681,7 @@ export default function HackathonAdminWorkspace() {
       setPublishingResults(true);
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/publish`,
-        { hackathonId: selectedHackathonId || "can-hackathon-2026", publish: shouldPublish },
+        { hackathonId: selectedHackathonId, publish: shouldPublish },
         { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
@@ -704,7 +706,7 @@ export default function HackathonAdminWorkspace() {
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/lock`,
         {
-          hackathonId: selectedHackathonId || "can-hackathon-2026",
+          hackathonId: selectedHackathonId,
           confirmLock: true,
           reason: lockResultsReason || "Official results locked by admin.",
         },
@@ -735,7 +737,7 @@ export default function HackathonAdminWorkspace() {
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/reopen`,
         {
-          hackathonId: selectedHackathonId || "can-hackathon-2026",
+          hackathonId: selectedHackathonId,
           reason: reopenResultsReason.trim(),
         },
         { headers: getAdminHeaders() }
@@ -827,7 +829,7 @@ export default function HackathonAdminWorkspace() {
       setGeneratingCertificates(true);
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/certificates/generate`,
-        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { hackathonId: selectedHackathonId },
         { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
@@ -849,7 +851,7 @@ export default function HackathonAdminWorkspace() {
       setEmailingCertificates(true);
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/certificates/email-bulk`,
-        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { hackathonId: selectedHackathonId },
         { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
@@ -987,7 +989,7 @@ export default function HackathonAdminWorkspace() {
       if (prizeFormMode === "create") {
         const payload = {
           ...prizeFormData,
-          hackathonId: selectedHackathonId || "can-hackathon-2026",
+          hackathonId: selectedHackathonId,
         };
         const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/prizes`, payload, {
           headers: getAdminHeaders(),
@@ -1056,7 +1058,7 @@ export default function HackathonAdminWorkspace() {
       if (sponsorFormMode === "create") {
         const payload = {
           ...sponsorFormData,
-          hackathonId: selectedHackathonId || "can-hackathon-2026",
+          hackathonId: selectedHackathonId,
         };
         const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/sponsors`, payload, {
           headers: getAdminHeaders(),
@@ -1420,6 +1422,17 @@ export default function HackathonAdminWorkspace() {
       });
       if (res.data?.success && Array.isArray(res.data.data)) {
         setAvailableHackathons(res.data.data);
+        setSelectedHackathonId((currentId) => {
+          if (currentId && res.data.data.some((h) => h.hackathonId === currentId)) {
+            return currentId;
+          }
+          const active = res.data.data.find((h) => h.status === "ACTIVE") || res.data.data[0];
+          const chosenId = active ? active.hackathonId : "";
+          if (chosenId) {
+            localStorage.setItem("adminSelectedHackathonId", chosenId);
+          }
+          return chosenId;
+        });
       }
     } catch (e) {
       console.error("Failed to load available hackathons:", e);
@@ -1428,6 +1441,11 @@ export default function HackathonAdminWorkspace() {
 
   const handleSwitchHackathon = (newId) => {
     setSelectedHackathonId(newId);
+    if (newId) {
+      localStorage.setItem("adminSelectedHackathonId", newId);
+    } else {
+      localStorage.removeItem("adminSelectedHackathonId");
+    }
     // Clear state before refetching
     setTeams([]);
     setDuplicateQueue([]);
@@ -1699,14 +1717,14 @@ export default function HackathonAdminWorkspace() {
                   onChange={(e) => handleSwitchHackathon(e.target.value)}
                   className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer pr-1"
                 >
-                  <option value="can-hackathon-2026" className="bg-slate-900 text-white">Code-A-Nova 2026 (Active)</option>
-                  {availableHackathons
-                    .filter((h) => h.hackathonId !== "can-hackathon-2026")
-                    .map((h) => (
-                      <option key={h.hackathonId} value={h.hackathonId} className="bg-slate-900 text-white">
-                        {h.name} ({h.status})
-                      </option>
-                    ))}
+                  {availableHackathons.length === 0 && (
+                    <option value="" className="bg-slate-900 text-white">Loading...</option>
+                  )}
+                  {availableHackathons.map((h) => (
+                    <option key={h.hackathonId} value={h.hackathonId} className="bg-slate-900 text-white">
+                      {h.name} {h.status === "ACTIVE" ? "(Active)" : `(${h.status})`}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
