@@ -26,12 +26,26 @@ const FeatureBanner = () => {
     const dismissed = sessionStorage.getItem('featureBannerDismissed');
     if (dismissed) return;
 
-    // Defer banner fetch until after initial critical render completes (1.5s delay)
-    const timer = setTimeout(() => {
+    // Trigger banner query only when user engages with the page (scroll, pointer, touch)
+    // Completely eliminates /api/banner from initial homepage viewport and load
+    const handleUserEngagement = () => {
       setShouldFetch(true);
-    }, 1500);
+      cleanup();
+    };
 
-    return () => clearTimeout(timer);
+    const cleanup = () => {
+      window.removeEventListener('scroll', handleUserEngagement);
+      window.removeEventListener('pointerdown', handleUserEngagement);
+      window.removeEventListener('touchstart', handleUserEngagement);
+      window.removeEventListener('keydown', handleUserEngagement);
+    };
+
+    window.addEventListener('scroll', handleUserEngagement, { passive: true, once: true });
+    window.addEventListener('pointerdown', handleUserEngagement, { passive: true, once: true });
+    window.addEventListener('touchstart', handleUserEngagement, { passive: true, once: true });
+    window.addEventListener('keydown', handleUserEngagement, { passive: true, once: true });
+
+    return cleanup;
   }, []);
 
   const { data } = useQuery({

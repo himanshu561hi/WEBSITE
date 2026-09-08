@@ -28,17 +28,24 @@ const Partners = () => {
             <img
               src="/edunet.svg"
               alt="Edunet Foundation"
+              loading="lazy"
+              decoding="async"
               className="h-15 md:h-23 object-contain group-hover:scale-105 transition-transform duration-300"
             />
           </a>
 
           {/* Aptimaster AI */}
           <a href="https://aptimasterai.online/" target="_blank" rel="noopener noreferrer" className="group cursor-pointer">
-            <img
-              src="/aptimaster.png"
-              alt="Aptimaster AI"
-              className="h-18 md:h-26 object-contain group-hover:scale-105 transition-transform duration-300"
-            />
+            <picture>
+              <source srcSet="/aptimaster.webp" type="image/webp" />
+              <img
+                src="/aptimaster.png"
+                alt="Aptimaster AI"
+                loading="lazy"
+                decoding="async"
+                className="h-18 md:h-26 object-contain group-hover:scale-105 transition-transform duration-300"
+              />
+            </picture>
           </a>
         </motion.div>
       </div>

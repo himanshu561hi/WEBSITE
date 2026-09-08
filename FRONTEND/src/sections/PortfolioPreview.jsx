@@ -111,6 +111,8 @@ const PortfolioPreview = () => {
                   <img 
                     src={project.image} 
                     alt={project.title} 
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-40 md:h-56 object-cover object-center group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>

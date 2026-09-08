@@ -606,15 +606,30 @@ router.get("/job-settings/granted-users", auth, verifyAdmin, async (req, res) =>
 });
 
 // ─── Banner Management ─────────────────────────────────────────────────────
+let cachedBanner = null;
+let bannerCacheTime = 0;
+const BANNER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
 
 // Public: anyone can fetch banner settings (used by frontend FeatureBanner)
 router.get("/banner", async (req, res) => {
   try {
-    const setting = await Settings.findOne({ key: "promoBanner" });
-    if (!setting || !setting.value) {
-      return res.json({ success: true, banner: null });
+    const now = Date.now();
+    if (cachedBanner && (now - bannerCacheTime < BANNER_CACHE_TTL)) {
+      res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+      return res.json(cachedBanner);
     }
-    res.json({ success: true, banner: setting.value });
+
+    const setting = await Settings.findOne({ key: "promoBanner" });
+    const responsePayload = {
+      success: true,
+      banner: setting && setting.value ? setting.value : null
+    };
+
+    cachedBanner = responsePayload;
+    bannerCacheTime = now;
+
+    res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+    res.json(responsePayload);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -647,6 +662,10 @@ router.post("/banner", auth, verifyAdmin, async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // Invalidate public banner cache
+    cachedBanner = null;
+    bannerCacheTime = 0;
+
     res.json({ success: true, banner: newValue });
   } catch (err) {
     console.error("Banner save error:", err);
@@ -662,6 +681,11 @@ router.delete("/banner", auth, verifyAdmin, async (req, res) => {
       { value: { imageUrl: null, enabled: false } },
       { upsert: true }
     );
+
+    // Invalidate public banner cache
+    cachedBanner = null;
+    bannerCacheTime = 0;
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
