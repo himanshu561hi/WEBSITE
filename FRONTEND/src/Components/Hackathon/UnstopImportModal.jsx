@@ -58,7 +58,7 @@ const TARGET_FIELDS = [
   { value: "member_3_College", label: "Member 3 College" },
 ];
 
-export default function UnstopImportModal({ isOpen, onClose, onImportSuccess }) {
+export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, hackathonId }) {
   const fileInputRef = useRef(null);
   const [step, setStep] = useState(1); // 1: Upload, 2: Preview & Mapping, 3: Success
   const [selectedFile, setSelectedFile] = useState(null);
