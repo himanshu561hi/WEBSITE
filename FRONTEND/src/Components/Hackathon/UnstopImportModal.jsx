@@ -532,33 +532,40 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, ha
                                       {isNew ? "NEW TEAM" : `UPDATE (${team.existingTeamCode || "EXISTING"})`}
                                     </span>
                                   </td>
-                                  <td className="p-3 font-mono text-[11px] text-slate-500 font-bold">
-                                    {team.teamId}
+                                  <td className="p-3 font-mono text-[11px] text-slate-600 font-bold">
+                                    {team.unstopApplicationId || team.teamId || "—"}
                                   </td>
                                   <td className="p-3 font-bold text-slate-900">{team.teamName}</td>
                                   <td className="p-3">
-                                    <div className="font-semibold text-slate-800">{team.leader.name}</div>
-                                    <div className="text-[11px] text-slate-400">{team.leader.email}</div>
-                                    {team.leader.phone && (
-                                      <div className="text-[10px] text-slate-400">{team.leader.phone}</div>
+                                    <div className="font-semibold text-slate-800">{team.leader?.name || "—"}</div>
+                                    <div className="text-[11px] text-slate-400">{team.leader?.email || "—"}</div>
+                                    {(team.leader?.phone || team.leader?.mobile) && (
+                                      <div className="text-[10px] text-slate-500 font-mono">{team.leader.phone || team.leader.mobile}</div>
                                     )}
                                   </td>
                                   <td className="p-3 font-bold text-slate-700">
-                                    {team.memberCount} candidate{team.memberCount > 1 ? "s" : ""}
+                                    {(() => {
+                                      const count = team.totalMembersInSheet ?? team.memberCount ?? (1 + (team.members?.length || 0));
+                                      return (
+                                        <span>
+                                          {count} {count === 1 ? "member" : "members"}
+                                        </span>
+                                      );
+                                    })()}
                                     {!isNew && team.memberDiff && (
                                       <div className="text-[10px] font-normal text-indigo-600">
                                         +{team.memberDiff.newCount} new, {team.memberDiff.updatedCount} update
                                       </div>
                                     )}
                                   </td>
-                                  <td className="p-3 text-slate-600 max-w-xs truncate" title={team.organization || ""}>
-                                    {team.organization || "—"}
+                                  <td className="p-3 text-slate-600 max-w-xs truncate" title={team.organization || team.college || team.leader?.college || team.leader?.organisation || ""}>
+                                    {team.organization || team.college || team.leader?.college || team.leader?.organisation || team.leader?.organization || "—"}
                                   </td>
                                   <td className="p-3 max-w-sm">
                                     <div className="space-y-0.5 text-[11px]">
-                                      {team.members.map((m, mIdx) => (
+                                      {(team.members || []).map((m, mIdx) => (
                                         <div key={mIdx} className="text-slate-600 truncate">
-                                          <span className="font-medium text-slate-800">{m.name}</span>{" "}
+                                          <span className="font-medium text-slate-800">{m.name || "Member"}</span>{" "}
                                           <span className="text-slate-400">({m.email})</span>
                                         </div>
                                       ))}

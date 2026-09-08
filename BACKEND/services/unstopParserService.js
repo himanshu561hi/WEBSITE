@@ -912,45 +912,64 @@ exports.generateRegistrationImportPreview = async ({
     const { rowIndex, rawObj } = rawRow;
 
     // Helper to retrieve value by matching column names (exact match first)
-    const getVal = (fieldKeys) => {
-      // 1. Exact match first
+    const getVal = (fieldKeys, excludeSubstrings = []) => {
+      // 1. Exact match first across all headers
       for (const [hdr, val] of Object.entries(rawObj)) {
         const normH = normalizeHeader(hdr);
+        if (excludeSubstrings.some((ex) => normH.includes(ex))) continue;
         for (const key of fieldKeys) {
           if (normH === key) {
-            return cleanString(val);
+            const cleaned = cleanString(val);
+            if (cleaned) return cleaned;
           }
         }
       }
-      // 2. Substring fallback
+      // 2. Substring fallback (only if not excluded)
       for (const [hdr, val] of Object.entries(rawObj)) {
         const normH = normalizeHeader(hdr);
+        if (excludeSubstrings.some((ex) => normH.includes(ex))) continue;
         for (const key of fieldKeys) {
           if (normH.includes(key)) {
-            return cleanString(val);
+            const cleaned = cleanString(val);
+            if (cleaned) return cleaned;
           }
         }
       }
       return '';
     };
 
-    const teamId = cleanString(getVal(['team id', 'unstop id', 'application id', 'registration id', 'reg id', 'app id']));
-    const teamName = cleanString(getVal(['team name', 'team', 'group name']));
-    const candidateRole = cleanString(getVal(['candidate role', 'role', 'team role', 'member role']));
-    const candidateName = cleanString(getVal(['candidate name', 'participant name', 'name', 'full name']));
-    const candidateEmail = cleanEmail(getVal(['candidate email', 'email id', 'email address', 'email']));
-    const candidateMobile = cleanPhone(getVal(['candidate mobile', 'mobile', 'phone', 'contact']));
+    const teamId = cleanString(getVal(
+      ['team id', 'unstop id', 'unstop team id', 'application id', 'registration id', 'app id', 'reg id', 'registration no', 'registration number', 'application no', 'application number', 'team code', 'participant id', 'candidate id', 'id', 'teamid', 'appid', 'regid'],
+      ['email', 'user', 'student', 'phone', 'mobile']
+    ));
+    const teamName = cleanString(getVal(
+      ['team name', 'name of the team', 'name of team', 'group name', 'teamname', 'team'],
+      ['leader', 'candidate', 'member', 'student', 'user', 'college', 'institute']
+    ));
+    const candidateRole = cleanString(getVal(
+      ['candidate role', 'team role', 'member role', 'role in team', 'role'],
+      ['user type', 'college', 'institute', 'team name']
+    ));
+    const candidateName = cleanString(getVal(
+      ['candidate name', 'participant name', 'student name', 'full name', 'member name', 'leader name', 'name', 'candidate'],
+      ['team', 'college', 'institute', 'university', 'school', 'project', 'idea', 'file', 'app', 'organisation', 'organization', 'role']
+    ));
+    const candidateEmail = cleanEmail(getVal(['candidate email', 'email id', 'email address', 'email', 'e mail']));
+    const candidateMobile = cleanPhone(getVal(['candidate mobile', 'mobile number', 'phone number', 'contact number', 'mobile no', 'phone no', 'mobile', 'phone', 'contact']));
     const candidateGender = cleanString(getVal(['candidate gender', 'gender', 'sex']));
     const candidateLocation = cleanString(getVal(['candidate location', 'location', 'city', 'state']));
     const userType = cleanString(getVal(['user type', 'type of user']));
-    const domain = cleanString(getVal(['domain', 'track', 'theme', 'preferred track']));
+    const domain = cleanString(getVal(['domain', 'track', 'theme', 'preferred track', 'category']));
     const course = cleanString(getVal(['course', 'degree', 'program']));
     const specialization = cleanString(getVal(['specialization', 'branch', 'department']));
     const courseType = cleanString(getVal(['course type']));
     const courseDuration = cleanString(getVal(['course duration']));
     const classGrade = cleanString(getVal(['class grade', 'class', 'grade', 'year of study']));
     const yearOfGraduation = cleanString(getVal(['year of graduation', 'graduation year', 'yog', 'passing year']));
-    const candidateOrganisation = cleanString(getVal(['candidate organisation', 'candidate organization', 'college', 'university', 'organisation', 'organization', 'institution']));
+    const candidateOrganisation = cleanString(getVal(
+      ['candidate organisation', 'candidate organization', 'college name', 'institute name', 'university name', 'school name', 'organisation name', 'organization name', 'college', 'university', 'institute', 'organisation', 'organization', 'institution', 'school'],
+      ['email', 'role', 'team id', 'candidate id', 'team name']
+    ));
     const designation = cleanString(getVal(['designation', 'occupation']));
     const registrationTime = getVal(['registration time', 'registered at', 'registered on', 'registration date', 'timestamp']);
     const workExperience = cleanString(getVal(['work experience', 'experience']));
@@ -1100,18 +1119,26 @@ exports.generateRegistrationImportPreview = async ({
     previewTeams.push({
       status,
       unstopApplicationId: teamId,
+      teamId: teamId || (existingTeam ? existingTeam.teamId : ''),
       teamName,
       domain,
       track: domain || 'General Track',
+      organization: leaderCand.candidateOrganisation || '',
+      college: leaderCand.candidateOrganisation || '',
+      memberCount: candidates.length,
+      totalMembersInSheet: candidates.length,
       registrationTime: regTime,
       registrationStatus: regStatus,
       leader: {
         name: leaderCand.candidateName,
         email: leaderCand.candidateEmail,
         mobile: leaderCand.candidateMobile,
+        phone: leaderCand.candidateMobile,
         gender: leaderCand.candidateGender,
         location: leaderCand.candidateLocation,
         college: leaderCand.candidateOrganisation,
+        organisation: leaderCand.candidateOrganisation,
+        organization: leaderCand.candidateOrganisation,
         state: leaderCand.candidateLocation,
         userType: leaderCand.userType,
         domain: leaderCand.domain,
@@ -1121,7 +1148,6 @@ exports.generateRegistrationImportPreview = async ({
         courseDuration: leaderCand.courseDuration,
         classGrade: leaderCand.classGrade,
         yearOfGraduation: leaderCand.yearOfGraduation,
-        organisation: leaderCand.candidateOrganisation,
         designation: leaderCand.designation,
         workExperience: leaderCand.workExperience,
         refCode: leaderCand.refCode,
@@ -1182,6 +1208,9 @@ exports.generateRegistrationImportPreview = async ({
       status: t.status === 'EXISTING_UPDATE' ? 'UPDATE' : t.status,
       teamName: t.teamName,
       unstopApplicationId: t.unstopApplicationId,
+      teamId: t.teamId,
+      organization: t.organization,
+      college: t.college,
       track: t.track,
       leader: t.leader,
       membersCount: t.members.length,
