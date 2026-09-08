@@ -20,7 +20,8 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const crypto = require('crypto');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Ensure all schemas are registered in mongoose
 require('../models/Settings');
@@ -127,6 +128,7 @@ async function runGoLiveVerification() {
       settings.participationFee = 49;
       settings.whatsAppLink = settings.whatsAppLink || 'https://chat.whatsapp.com/test-golive-group';
       settings.isSubmissionOpen = true;
+      settings.submissionDeadline = new Date(Date.now() + 86400000);
       settings.resultsLocked = false;
       settings.isResultsPublished = false;
       await settings.save();

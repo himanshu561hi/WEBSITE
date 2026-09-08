@@ -86,6 +86,39 @@ const emailLogSchema = new mongoose.Schema(
       default: 'Backend API',
       trim: true,
     },
+    // Multi-Hackathon Phase M10 Scoping & Telemetry
+    hackathonId: {
+      type: String,
+      default: null,
+      trim: true,
+      index: true,
+    },
+    eventType: {
+      type: String,
+      default: null,
+      trim: true,
+      index: true,
+    },
+    provider: {
+      type: String,
+      default: 'smtp',
+      enum: ['smtp', 'resend', 'mock', 'other'],
+      index: true,
+    },
+    idempotencyKey: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    entityId: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     // Future expansion attributes (open tracking, scheduled dispatches, click metrics)
     openCount: { type: Number, default: 0 },
     clickCount: { type: Number, default: 0 },
@@ -105,6 +138,13 @@ emailLogSchema.index({ status: 1, createdAt: -1 });
 emailLogSchema.index({ campaign: 1, createdAt: -1 });
 emailLogSchema.index({ recipientEmail: 1, createdAt: -1 });
 emailLogSchema.index({ source: 1, createdAt: -1 });
+
+// Phase M10: Multi-Hackathon Scoped Compound Indexes
+emailLogSchema.index({ hackathonId: 1, createdAt: -1 });
+emailLogSchema.index({ hackathonId: 1, recipientEmail: 1 });
+emailLogSchema.index({ hackathonId: 1, eventType: 1 });
+emailLogSchema.index({ hackathonId: 1, status: 1 });
+emailLogSchema.index({ idempotencyKey: 1 }, { sparse: true });
 
 // Performance indexes to accelerate keyword searching without full collection document scans
 emailLogSchema.index({ subject: 1 });

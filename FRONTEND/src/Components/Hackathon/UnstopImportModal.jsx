@@ -111,6 +111,9 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess }) 
       const token = getAdminToken();
       const formData = new FormData();
       formData.append("excelFile", selectedFile);
+      if (hackathonId) {
+        formData.append("hackathonId", hackathonId);
+      }
       if (selectedStage !== "AUTO") {
         formData.append("importType", selectedStage);
       }
@@ -125,6 +128,7 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess }) 
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
+          ...(hackathonId ? { "x-hackathon-id": hackathonId } : {}),
         },
       });
 
@@ -185,6 +189,7 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess }) 
       const token = getAdminToken();
 
       const payload = {
+        hackathonId,
         importType: previewData.importType,
         rows: previewData.previewRows,
         duplicateHandling,
@@ -192,7 +197,10 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess }) 
       };
 
       const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/unstop/commit`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          ...(hackathonId ? { "x-hackathon-id": hackathonId } : {}),
+        },
       });
 
       if (res.data?.success) {

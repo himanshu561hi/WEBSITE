@@ -4,7 +4,7 @@ const hackathonSubmissionSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: [true, 'hackathonId is required'],
       index: true,
       trim: true,
     },
@@ -17,6 +17,7 @@ const hackathonSubmissionSchema = new mongoose.Schema(
     teamId: {
       type: String,
       required: true,
+      unique: true,
       index: true,
       trim: true,
     },
@@ -132,9 +133,32 @@ const hackathonSubmissionSchema = new mongoose.Schema(
   }
 );
 
+// Auto-inherit hackathonId from parent team if omitted
+hackathonSubmissionSchema.pre('validate', async function () {
+  if (!this.hackathonId) {
+    try {
+      const HackathonTeam = mongoose.model('HackathonTeam');
+      let parentTeam = null;
+      if (this.team && mongoose.isValidObjectId(this.team)) {
+        parentTeam = await HackathonTeam.findById(this.team).select('hackathonId').lean();
+      }
+      if (!parentTeam && this.teamId) {
+        parentTeam = await HackathonTeam.findOne({ teamId: this.teamId }).select('hackathonId').lean();
+      }
+      if (parentTeam?.hackathonId) {
+        this.hackathonId = parentTeam.hackathonId;
+      }
+    } catch (e) {
+      // Ignore error and let schema validation handle missing hackathonId
+    }
+  }
+});
+
 // Compound indexes for judging assignment and submission statistics lookups
+hackathonSubmissionSchema.index({ hackathonId: 1, teamId: 1 });
 hackathonSubmissionSchema.index({ hackathonId: 1, status: 1 });
 hackathonSubmissionSchema.index({ hackathonId: 1, isLocked: 1 });
+hackathonSubmissionSchema.index({ hackathonId: 1, createdAt: -1 });
 hackathonSubmissionSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('HackathonSubmission', hackathonSubmissionSchema);

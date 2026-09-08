@@ -13,7 +13,34 @@ const sendSafeEmail = require('../utils/safeMailSender');
 class MailService {
   constructor() {
     this.transporter = null;
+    this.mockTransport = null;
+    this.mockSentEmails = [];
     this.initTransporter();
+  }
+
+  /**
+   * Mock transport methods for zero-network testing
+   */
+  setMockTransport(mockFn) {
+    this.mockTransport = mockFn;
+  }
+
+  enableMockTransport() {
+    this.mockTransport = true;
+    this.mockSentEmails = [];
+  }
+
+  disableMockTransport() {
+    this.mockTransport = null;
+    this.mockSentEmails = [];
+  }
+
+  getMockSentEmails() {
+    return [...this.mockSentEmails];
+  }
+
+  clearMockSentEmails() {
+    this.mockSentEmails = [];
   }
 
   /**
@@ -95,6 +122,12 @@ class MailService {
    * @param {string} [options.source] - Optional source identifier
    * @param {string} [options.recipientName] - Optional recipient name
    * @param {string} [options.text] - Optional plain text fallback
+   * @param {string} [options.hackathonId] - Optional associated hackathon
+   * @param {string} [options.eventType] - Optional event type
+   * @param {string} [options.provider] - Optional provider override
+   * @param {string} [options.idempotencyKey] - Optional idempotency key
+   * @param {string} [options.entityId] - Optional entity id
+   * @param {Object} [options.metadata] - Optional additional metadata
    * @returns {Promise<{success: boolean, messageId?: string, accepted?: Array, error?: string, code?: string}>}
    */
   async sendEmail({
@@ -110,6 +143,12 @@ class MailService {
     campaign,
     source,
     recipientName,
+    hackathonId = null,
+    eventType = null,
+    provider = null,
+    idempotencyKey = null,
+    entityId = null,
+    metadata = {},
   }) {
     // Strictly enforce manager@code-a-nova.online as outgoing sender (never hr@code-a-nova.online)
     let effectiveFrom = from;
@@ -120,6 +159,64 @@ class MailService {
     let effectiveReplyTo = replyTo;
     if (!effectiveReplyTo || effectiveReplyTo.includes('hr@code-a-nova.online')) {
       effectiveReplyTo = process.env.SMTP_REPLY_TO || process.env.SMTP_FROM || 'manager@code-a-nova.online';
+    }
+
+    const finalCampaign = campaign || 'General';
+    const finalSource = source || 'Backend API';
+
+    // Mock Transport Interceptor for Automated Tests
+    if (this.mockTransport) {
+      const mockMessageId = `mock_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const emailRecord = {
+        to,
+        subject,
+        html,
+        from: effectiveFrom,
+        replyTo: effectiveReplyTo,
+        text: text || '',
+        campaign: finalCampaign,
+        source: finalSource,
+        hackathonId: hackathonId || null,
+        eventType: eventType || null,
+        provider: 'mock',
+        idempotencyKey: idempotencyKey || null,
+        entityId: entityId || null,
+        messageId: mockMessageId,
+        sentAt: new Date(),
+      };
+      this.mockSentEmails.push(emailRecord);
+
+      if (typeof this.mockTransport === 'function') {
+        await this.mockTransport(emailRecord);
+      }
+
+      await emailLogger.logEmail({
+        senderEmail: effectiveFrom,
+        recipientEmail: to,
+        recipientName: recipientName || '',
+        subject,
+        html,
+        text: text || '',
+        campaign: finalCampaign,
+        status: 'SUCCESS',
+        messageId: mockMessageId,
+        accepted: [to],
+        smtpResponse: '250 Mock email accepted',
+        source: finalSource,
+        hackathonId,
+        eventType,
+        provider: 'mock',
+        idempotencyKey,
+        entityId,
+        metadata,
+      });
+
+      return {
+        success: true,
+        messageId: mockMessageId,
+        accepted: [to],
+        mock: true,
+      };
     }
 
     try {
@@ -151,16 +248,23 @@ class MailService {
       ...(attachments && { attachments }),
     };
 
-      const finalCampaign = campaign || 'General';
-      const finalSource = source || 'Google Apps Script';
+      const loggingContext = {
+        hackathonId,
+        eventType,
+        provider: provider || 'smtp',
+        idempotencyKey,
+        entityId,
+        metadata,
+      };
 
-      const info = await sendSafeEmail(this.transporter, mailOptions, campaign, finalSource);
+      const info = await sendSafeEmail(this.transporter, mailOptions, finalCampaign, finalSource, loggingContext);
 
       console.log("==========================================");
       console.log("EMAIL SENT (Diagnostics)");
       console.log("To:", to);
       console.log("Subject:", subject);
       console.log("Campaign:", finalCampaign);
+      console.log("Hackathon:", hackathonId || 'GLOBAL');
       console.log("Source:", finalSource);
       console.log("Message ID:", info.messageId);
       console.log("Accepted:", info.accepted);
@@ -170,8 +274,6 @@ class MailService {
 
       // Save to IMAP Sent Folder asynchronously
       try {
-        // We use MailComposer to generate the exact raw MIME message based on our mailOptions
-        // Adding the Message-Id from info ensures the exact ID sent is saved
         const saveOptions = { ...mailOptions, messageId: info.messageId };
         const mail = new MailComposer(saveOptions);
         const rawMessage = await mail.compile().build();
@@ -182,9 +284,6 @@ class MailService {
         console.error("[MailService] ⚠️ IMAP message generation failed (non-blocking exception):", imapErr.message);
       }
 
-      // Logging is now handled centrally by sendSafeEmail to avoid duplicates
-
-
       return {
         success: true,
         messageId: info.messageId,
@@ -192,14 +291,12 @@ class MailService {
         rejected: info.rejected,
       };
     } catch (error) {
-      const finalCampaign = campaign || "General";
-      const finalSource = source || "Google Apps Script";
-
       console.error("==========================================");
       console.error("EMAIL FAILED (Diagnostics)");
       console.error("Recipient:", to);
       console.error("Subject:", subject);
       console.error("Campaign:", finalCampaign);
+      console.error("Hackathon:", hackathonId || 'GLOBAL');
       console.error("Source:", finalSource);
       console.error("SMTP Response / Error:", error.message);
       console.error("==========================================");
@@ -220,10 +317,10 @@ class MailService {
             const messageId = resendResult.data?.id || `resend_${Date.now()}`;
             console.log(`[MailService] ✔ Email successfully dispatched via Resend fallback! MessageID: ${messageId}`);
 
-            // Log to centralized Email Center
+            // Log to centralized Email Center with multi-hackathon context
             try {
               await emailLogger.logEmail({
-                senderEmail: 'manager@code-a-nova.online',
+                senderEmail: effectiveFrom,
                 recipientEmail: to,
                 recipientName: recipientName || '',
                 subject,
@@ -235,6 +332,12 @@ class MailService {
                 accepted: [to],
                 smtpResponse: '250 Dispatched via Resend API Fallback',
                 source: `${finalSource} (Resend Fallback)`,
+                hackathonId,
+                eventType,
+                provider: 'resend',
+                idempotencyKey,
+                entityId,
+                metadata,
               });
             } catch (logErr) {
               console.warn('[MailService] Failed to record Resend log to DB:', logErr.message);
@@ -268,31 +371,31 @@ class MailService {
 
   /**
    * Sends a batch of emails sequentially with throttling delay to protect against Hostinger rate limits.
-   * Reusable for future internships, quizzes, newsletters, certificates, and system announcements.
-   * @param {Array<Object>} emailList - Array of options matching sendEmail parameters
-   * @param {number} [delayMs=1000] - Delay in milliseconds between email dispatches
-   * @returns {Promise<{total: number, successful: number, failed: number, results: Array}>}
    */
-  async sendBatchEmails(emailList = [], delayMs = 1000) {
+  async sendBatchEmails(emailList, delayMs = 1500) {
     if (!Array.isArray(emailList) || emailList.length === 0) {
-      return { total: 0, successful: 0, failed: 0, results: [] };
+      return { success: false, message: "Email list must be a non-empty array." };
     }
 
     console.log(`[MailService] 🚀 Launching batch transmission of ${emailList.length} emails with ${delayMs}ms delay...`);
-    const results = [];
     let successful = 0;
     let failed = 0;
+    const results = [];
 
     for (let i = 0; i < emailList.length; i++) {
-      const item = emailList[i];
-      const res = await this.sendEmail(item);
-
-      if (res.success) {
-        successful++;
-      } else {
+      const emailOptions = emailList[i];
+      try {
+        const res = await this.sendEmail(emailOptions);
+        if (res.success) {
+          successful++;
+        } else {
+          failed++;
+        }
+        results.push({ email: emailOptions.to, ...res });
+      } catch (err) {
         failed++;
+        results.push({ email: emailOptions.to, success: false, error: err.message });
       }
-      results.push({ to: item.to, ...res });
 
       // Pause before sending next email to prevent SMTP spam triggers
       if (i < emailList.length - 1 && delayMs > 0) {
@@ -302,6 +405,7 @@ class MailService {
 
     console.log(`[MailService] 🏁 Batch transmission finalized | Total: ${emailList.length} | ✔ Success: ${successful} | ❌ Failed: ${failed}`);
     return {
+      success: true,
       total: emailList.length,
       successful,
       failed,
@@ -319,7 +423,7 @@ class MailService {
     const log = await EmailLog.findById(logId);
 
     if (!log) {
-      const err = new Error("Original email log record not found.");
+      const err = new Error("Email log record not found.");
       err.status = 404;
       throw err;
     }
@@ -337,7 +441,6 @@ class MailService {
 
     console.log(`[MailService] 🔄 Resending historical email [${log.subject}] to [${log.recipientEmail}]...`);
 
-    // Fix 11: Resend calls sendEmail with source 'Admin Resend', which automatically creates a completely NEW log entry
     return await this.sendEmail({
       to: log.recipientEmail,
       subject: log.subject,
@@ -349,6 +452,9 @@ class MailService {
       campaign: log.campaign,
       source: "Admin Resend",
       recipientName: log.recipientName,
+      hackathonId: log.hackathonId || null,
+      eventType: log.eventType || null,
+      entityId: log.entityId || null,
     });
   }
 

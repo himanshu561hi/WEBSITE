@@ -554,6 +554,7 @@ function normalizeTeamRow(row, mappedColumns, customMapping = {}) {
 exports.generateImportPreview = async ({
   sheetData,
   customMapping = {},
+  hackathonId = 'can-hackathon-2026',
 }) => {
   const { rawRows, mappedColumns } = sheetData;
 
@@ -581,12 +582,14 @@ exports.generateImportPreview = async ({
     }
   }
 
-  // Batch query existing database records
+  // Batch query existing database records scoped to hackathonId
   const existingTeams = await HackathonTeam.find({
+    hackathonId,
     $or: [
       { unstopApplicationId: { $in: candidateUnstopIds.filter(Boolean) } },
       { 'leader.email': { $in: candidateEmails.filter(Boolean) } },
     ],
+    isDeleted: { $ne: true },
   }).select('teamId teamName unstopApplicationId leader status paymentStatus');
 
   const existingDbMapByUnstopId = new Map();
@@ -725,6 +728,7 @@ exports.generateImportPreview = async ({
 exports.commitBatchImport = async ({
   rowsToImport,
   duplicateHandling = 'SKIP', // 'SKIP' or 'UPDATE'
+  hackathonId = 'can-hackathon-2026',
 }) => {
   let importedCount = 0;
   let updatedCount = 0;
@@ -757,12 +761,14 @@ exports.commitBatchImport = async ({
             skippedCount++;
             continue;
           } else if (duplicateHandling === 'UPDATE') {
-            // Find existing team to update
+            // Find existing team to update scoped to hackathonId
             const existing = await HackathonTeam.findOne({
+              hackathonId,
               $or: [
                 ...(item.unstopApplicationId ? [{ unstopApplicationId: item.unstopApplicationId }] : []),
                 ...(item.leader?.email ? [{ 'leader.email': item.leader.email.toLowerCase() }] : []),
               ],
+              isDeleted: { $ne: true },
             });
 
             if (existing) {
@@ -802,6 +808,7 @@ exports.commitBatchImport = async ({
 
         await HackathonTeam.create({
           teamId,
+          hackathonId,
           unstopApplicationId: unstopAppId,
           sourceReferences: {
             unstopTeamIds: unstopAppId ? [unstopAppId] : [],
@@ -893,7 +900,11 @@ exports.detectImportType = detectImportType;
  * STAGE 1 — REGISTRATION IMPORT PREVIEW
  * Master source for Teams + Multiple Members grouped by Team ID.
  */
-exports.generateRegistrationImportPreview = async ({ sheetData, customMapping = {} }) => {
+exports.generateRegistrationImportPreview = async ({
+  sheetData,
+  customMapping = {},
+  hackathonId = 'can-hackathon-2026',
+}) => {
   const { rawRows } = sheetData;
   const candidateRows = [];
 
@@ -987,11 +998,12 @@ exports.generateRegistrationImportPreview = async ({ sheetData, customMapping = 
     teamGroups.get(groupKey).push(cand);
   });
 
-  // Batch query database for existing teams
+  // Batch query database for existing teams scoped to hackathonId
   const allTeamIds = Array.from(teamGroups.keys());
   const allCandidateEmails = candidateRows.map((c) => c.candidateEmail).filter(Boolean);
 
   const existingTeamsDb = await HackathonTeam.find({
+    hackathonId,
     $or: [
       { 'sourceReferences.unstopTeamIds': { $in: allTeamIds } },
       { unstopApplicationId: { $in: allTeamIds } },
@@ -1183,7 +1195,14 @@ exports.generateRegistrationImportPreview = async ({ sheetData, customMapping = 
 /**
  * STAGE 1 — REGISTRATION IMPORT COMMIT
  */
-exports.commitRegistrationImport = async ({ teamsToImport, duplicateHandling = 'UPDATE' }) => {
+exports.commitRegistrationImport = async ({
+  teamsToImport,
+  duplicateHandling = 'UPDATE',
+  hackathonId = 'can-hackathon-2026',
+}) => {
+  if (hackathonId === null || hackathonId === '') {
+    throw new Error('hackathonId is required for Stage 1 registration import');
+  }
   let teamsCreated = 0;
   let teamsUpdated = 0;
   let membersCreated = 0;
@@ -1202,8 +1221,9 @@ exports.commitRegistrationImport = async ({ teamsToImport, duplicateHandling = '
         continue;
       }
 
-      // Check if team already exists by sourceReferences, unstopApplicationId, existing teamId, or leader email
+      // Check if team already exists by sourceReferences, unstopApplicationId, existing teamId, or leader email scoped to hackathonId
       const existing = await HackathonTeam.findOne({
+        hackathonId,
         $or: [
           ...(item.unstopApplicationId ? [
             { 'sourceReferences.unstopTeamIds': item.unstopApplicationId },
@@ -1297,6 +1317,7 @@ exports.commitRegistrationImport = async ({ teamsToImport, duplicateHandling = '
         const unstopAppId = (item.unstopApplicationId || '').trim();
         await HackathonTeam.create({
           teamId,
+          hackathonId,
           unstopApplicationId: unstopAppId,
           sourceReferences: {
             unstopTeamIds: unstopAppId ? [unstopAppId] : [],
@@ -1346,11 +1367,15 @@ exports.commitRegistrationImport = async ({ teamsToImport, duplicateHandling = '
  * Enrichment only: matches existing teams via multi-tier hierarchy and attaches PPT.
  * MUST NEVER CREATE A NEW TEAM.
  */
-exports.generatePptImportPreview = async ({ sheetData, customMapping = {} }) => {
+exports.generatePptImportPreview = async ({
+  sheetData,
+  customMapping = {},
+  hackathonId = 'can-hackathon-2026',
+}) => {
   const { rawRows } = sheetData;
 
-  // 1. Fetch all active teams from DB
-  const activeTeams = await HackathonTeam.find({ isDeleted: { $ne: true } })
+  // 1. Fetch all active teams from DB scoped to hackathonId
+  const activeTeams = await HackathonTeam.find({ hackathonId, isDeleted: { $ne: true } })
     .select('teamId teamName unstopApplicationId sourceReferences sources leader members initialIdea pptSubmission track')
     .lean();
 
@@ -1608,7 +1633,10 @@ exports.generatePptImportPreview = async ({ sheetData, customMapping = {} }) => 
 /**
  * STAGE 2 — PPT ROUND IMPORT COMMIT
  */
-exports.commitPptImport = async ({ rowsToImport }) => {
+exports.commitPptImport = async ({ rowsToImport, hackathonId = 'can-hackathon-2026' }) => {
+  if (hackathonId === null || hackathonId === '') {
+    throw new Error('hackathonId is required for Stage 2 PPT import');
+  }
   let pptCreated = 0;
   let pptUpdated = 0;
   let unmatchedSkipped = 0;
@@ -1636,6 +1664,7 @@ exports.commitPptImport = async ({ rowsToImport }) => {
       }
 
       const team = await HackathonTeam.findOne({
+        hackathonId,
         $or: [
           ...(row.matchedTeam._id ? [{ _id: row.matchedTeam._id }] : []),
           ...(row.matchedTeam.teamId ? [

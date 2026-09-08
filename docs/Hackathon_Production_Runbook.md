@@ -314,3 +314,31 @@ Before opening the platform for live traffic, verify each checkpoint:
 - [x] **Server-Time Deadlines Enforced**: System clock strictly governs submission lockdown.
 - [x] **Certificate Verification Operational**: Public verification endpoint tested with valid and invalid codes.
 - [x] **Automated Test Suites Passing**: 100% passing across all phase regression suites.
+
+---
+
+## 9. Phase M11 Platform Hardening & Operational Observability
+
+### 9.1 Pre-Deployment Automated Validation Tools
+Before any staging or production deployment, administrators should execute the automated M11 verification utilities:
+
+1. **Validate Environment Configuration (Zero Secret Output):**
+   ```bash
+   node BACKEND/scripts/validateProductionConfig.js
+   ```
+   Ensures `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, Razorpay, and SMTP/Resend variables are properly configured.
+
+2. **Read-Only Database Referential Integrity Audit:**
+   ```bash
+   node BACKEND/scripts/auditMultiHackathonIntegrity.js
+   ```
+   Scans for orphan payments, dangling assignments, duplicate canonical team IDs, and cross-hackathon reference mismatches without altering database records.
+
+### 9.2 Request Correlation & Tracing
+All HTTP requests are tagged with an `X-Request-ID` header. In server-side error logs, `[GlobalError] [requestId]` enables instant correlation of user reports with backend diagnostics.
+
+### 9.3 Multi-Hackathon Isolation Verification
+- Every operational query must be qualified with `req.hackathonId`.
+- Operational endpoints (`/admin/search`, `/admin/team-360`, `/admin/export`) require explicit hackathon context and never default to legacy 2026 data.
+- Only one hackathon can have `status: 'ACTIVE'` at any time; concurrent activations are strictly rejected.
+

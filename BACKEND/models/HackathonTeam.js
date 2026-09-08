@@ -97,7 +97,7 @@ const hackathonTeamSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: true,
       trim: true,
       index: true,
     },
@@ -377,10 +377,14 @@ hackathonTeamSchema.pre('save', function (next) {
 hackathonTeamSchema.index({ 'members.email': 1 });
 hackathonTeamSchema.index({ 'sourceReferences.unstopTeamIds': 1 });
 hackathonTeamSchema.index({ 'sourceReferences.websiteRegistrationIds': 1 });
+hackathonTeamSchema.index({ hackathonId: 1, teamId: 1 });
 hackathonTeamSchema.index({ hackathonId: 1, status: 1 });
 hackathonTeamSchema.index({ hackathonId: 1, paymentStatus: 1 });
 hackathonTeamSchema.index({ hackathonId: 1, track: 1 });
 hackathonTeamSchema.index({ isDeleted: 1, status: 1 });
 hackathonTeamSchema.index({ createdAt: -1 });
+hackathonTeamSchema.index({ hackathonId: 1, 'leader.email': 1 });
+hackathonTeamSchema.index({ hackathonId: 1, createdAt: -1 });
+hackathonTeamSchema.index({ hackathonId: 1, 'members.email': 1 });
 
 module.exports = mongoose.model('HackathonTeam', hackathonTeamSchema);

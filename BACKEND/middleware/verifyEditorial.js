@@ -1,11 +1,24 @@
+const jwt = require('jsonwebtoken');
 const HackathonEditorialMember = require('../models/HackathonEditorialMember');
 
 /**
   * Middleware to verify Editorial / Judge authorization.
-  * Must be executed after the base auth.js middleware.
+  * Can be executed after auth.js middleware or directly with Bearer token.
   */
 const verifyEditorial = async (req, res, next) => {
   try {
+    if (!req.user && req.headers?.authorization?.startsWith('Bearer ')) {
+      const token = req.headers.authorization.split(' ')[1];
+      try {
+        req.user = jwt.verify(token, process.env.JWT_SECRET || process.env.JWT_SECRET_KEY || 'secret');
+      } catch (jwtErr) {
+        return res.status(401).json({
+          success: false,
+          message: '401 Unauthorized: Invalid or expired authentication token.',
+        });
+      }
+    }
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -45,7 +58,20 @@ const verifyEditorial = async (req, res, next) => {
       });
     }
 
-    // Scope hackathon check
+    // Scope hackathon check: strict boundary enforcement
+    const requestedHackathonId =
+      req.headers['x-hackathon-id'] ||
+      req.query?.hackathonId ||
+      req.body?.hackathonId ||
+      req.hackathonId;
+
+    if (requestedHackathonId && member.hackathonId && requestedHackathonId !== member.hackathonId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Access across different hackathons is denied.',
+      });
+    }
+
     if (req.user.hackathonId && member.hackathonId && req.user.hackathonId !== member.hackathonId) {
       return res.status(403).json({
         success: false,
@@ -53,6 +79,7 @@ const verifyEditorial = async (req, res, next) => {
       });
     }
 
+    req.hackathonId = member.hackathonId;
     req.editorialMember = member;
     next();
   } catch (error) {

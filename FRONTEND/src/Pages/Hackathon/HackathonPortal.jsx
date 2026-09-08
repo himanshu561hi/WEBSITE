@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { useHackathon } from "../../context/HackathonContext";
 import {
   Trophy,
   Flame,
@@ -49,6 +50,14 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5006";
 
 export default function HackathonPortal() {
   const navigate = useNavigate();
+  const { slug } = useParams();
+  const {
+    currentHackathon,
+    isNoActive,
+    error: contextError,
+    loading: contextLoading,
+  } = useHackathon();
+
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(null);
   const [userTeam, setUserTeam] = useState(null);
@@ -98,7 +107,10 @@ export default function HackathonPortal() {
       const tid = explicitTeamId || userTeam?.teamId;
       const teamIdParam = tid ? `?teamId=${encodeURIComponent(tid)}` : "";
       const res = await axios.get(`${BACKEND_URL}/api/hackathon/submission/my-submission${teamIdParam}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+        },
       });
       if (res.data?.success && res.data.submission) {
         const sub = res.data.submission;
@@ -196,17 +208,37 @@ export default function HackathonPortal() {
     const loadData = async () => {
       try {
         setLoading(true);
-        // 1. Fetch public hackathon details
-        const infoRes = await axios.get(`${BACKEND_URL}/api/hackathon/info`);
-        if (infoRes.data?.success) {
-          setSettings(infoRes.data.data);
+        // 1. Fetch public hackathon details (Context-aware: dynamic slug or active)
+        if (currentHackathon) {
+          setSettings(currentHackathon);
+        } else if (!isNoActive && contextError !== "HACKATHON_NOT_FOUND") {
+          try {
+            const endpoint = slug
+              ? `${BACKEND_URL}/api/hackathon/by-slug/${encodeURIComponent(slug)}`
+              : `${BACKEND_URL}/api/hackathon/active`;
+            const infoRes = await axios.get(endpoint);
+            if (infoRes.data?.success && infoRes.data.data) {
+              setSettings(infoRes.data.data);
+            }
+          } catch (fetchErr) {
+            // Fallback to legacy info endpoint if active lookup returned 404
+            if (fetchErr.response?.data?.code !== "NO_ACTIVE_HACKATHON") {
+              const legacyRes = await axios.get(`${BACKEND_URL}/api/hackathon/info`);
+              if (legacyRes.data?.success) {
+                setSettings(legacyRes.data.data);
+              }
+            }
+          }
         }
 
         // 2. If logged in, fetch participant's team
         if (token) {
           try {
             const teamRes = await axios.get(`${BACKEND_URL}/api/hackathon/my-team`, {
-              headers: { Authorization: `Bearer ${token}` },
+              headers: {
+                Authorization: `Bearer ${token}`,
+                ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+              },
             });
             if (teamRes.data?.success && teamRes.data?.hasTeam) {
               const t = teamRes.data.team;
@@ -332,7 +364,10 @@ export default function HackathonPortal() {
       };
 
       const res = await axios.post(`${BACKEND_URL}/api/hackathon/submission/save-draft`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+        },
       });
 
       if (res.data?.success) {
@@ -378,7 +413,10 @@ export default function HackathonPortal() {
       };
 
       const res = await axios.post(`${BACKEND_URL}/api/hackathon/submission/final-submit`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+        },
       });
 
       if (res.data?.success) {
@@ -400,12 +438,16 @@ export default function HackathonPortal() {
   };
 
   const getStatusBadge = (status) => {
+    const feeText = settings?.isPaymentRequired === false || settings?.participationFee === 0
+      ? ""
+      : ` (${settings?.currency || "₹"}${settings?.participationFee ?? 49})`;
+
     const map = {
       IMPORTED: { text: "Imported from Unstop", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
       UNDER_REVIEW: { text: "PPT Under Review", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
       SHORTLISTED: { text: "Shortlisted 🎉", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
       REJECTED: { text: "Not Shortlisted", color: "bg-rose-500/20 text-rose-400 border-rose-500/30" },
-      PAYMENT_PENDING: { text: "Fee Pending (₹49)", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+      PAYMENT_PENDING: { text: `Fee Pending${feeText}`, color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
       CONFIRMED: { text: "Confirmed Participant ✅", color: "bg-green-500/20 text-green-400 border-green-500/30" },
       SUBMISSION_PENDING: { text: "Submission Pending", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
       SUBMITTED: { text: "Project Submitted 🚀", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
@@ -439,16 +481,38 @@ export default function HackathonPortal() {
       const orderRes = await axios.post(
         `${BACKEND_URL}/api/hackathon/payment/create-order`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+          },
+        }
       );
 
       if (!orderRes.data?.success) {
         throw new Error(orderRes.data?.message || "Failed to create payment order");
       }
 
+      // If free confirmation (isPaymentRequired is false)
+      if (orderRes.data?.isFree) {
+        setPaymentSuccess("Participation confirmed successfully! No fee required.");
+        const teamRes = await axios.get(`${BACKEND_URL}/api/hackathon/my-team`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+          },
+        });
+        if (teamRes.data?.success && teamRes.data?.hasTeam) {
+          setUserTeam(teamRes.data.team);
+          setIsLeader(teamRes.data.isLeader);
+        }
+        setPaymentLoading(false);
+        return;
+      }
+
       const { order, key, team } = orderRes.data;
       const orderId = order?.id || orderRes.data.orderId;
-      const amountInPaise = order?.amount || orderRes.data.amountInPaise || (orderRes.data.amount ? Math.round(orderRes.data.amount * 100) : 4900);
+      const amountInPaise = order?.amount || orderRes.data.amountInPaise || (orderRes.data.amount ? Math.round(orderRes.data.amount * 100) : (settings?.participationFee ? settings.participationFee * 100 : 4900));
       const teamName = team?.teamName || orderRes.data.teamName || userTeam?.teamName || "Hackathon Team";
 
       if (!orderId) {
@@ -484,14 +548,22 @@ export default function HackathonPortal() {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
               },
-              { headers: { Authorization: `Bearer ${token}` } }
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+                },
+              }
             );
 
             if (verifyRes.data?.success) {
               setPaymentSuccess("Participation confirmed successfully! WhatsApp group unlocked.");
               // Reload team details
               const teamRes = await axios.get(`${BACKEND_URL}/api/hackathon/my-team`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  ...(hackathonData?.hackathonId ? { "x-hackathon-id": hackathonData.hackathonId } : {}),
+                },
               });
               if (teamRes.data?.success && teamRes.data?.hasTeam) {
                 setUserTeam(teamRes.data.team);
@@ -533,11 +605,69 @@ export default function HackathonPortal() {
       ? `₹${Number(myPrizes[0].amount).toLocaleString()} + Certificate + Trophy`
       : (participantResult?.prize || "Certificate of Excellence");
 
+  // Controlled UI state: No Active Hackathon
+  if (!loading && (isNoActive || contextError === "NO_ACTIVE_HACKATHON")) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
+        <SEO
+          title="No Active Hackathon | Code-A-Nova"
+          description="There is currently no live hackathon accepting registrations. Check back soon for the next edition!"
+        />
+        <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4 shadow-xl">
+          <Terminal className="w-8 h-8" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tight text-white mb-2">No Active Hackathon</h1>
+        <p className="text-slate-400 max-w-md mb-6">
+          There is currently no live hackathon accepting registrations. New editions, tracks, and challenges will be announced soon!
+        </p>
+        <Link
+          to="/"
+          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all shadow-lg shadow-indigo-600/30"
+        >
+          Back to Home
+        </Link>
+      </div>
+    );
+  }
+
+  // Controlled UI state: Requested Hackathon Not Found
+  if (!loading && contextError === "HACKATHON_NOT_FOUND") {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
+        <SEO
+          title="Hackathon Not Found | Code-A-Nova"
+          description="The requested hackathon could not be found."
+        />
+        <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 shadow-xl">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tight text-white mb-2">Hackathon Not Found</h1>
+        <p className="text-slate-400 max-w-md mb-6">
+          The hackathon you requested does not exist, may have been removed, or the link is invalid.
+        </p>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/hackathon"
+            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-all shadow-lg shadow-indigo-600/30"
+          >
+            View Active Hackathon
+          </Link>
+          <Link
+            to="/"
+            className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-all"
+          >
+            Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white relative overflow-hidden">
       <SEO
-        title="Code-A-Nova National Hackathon 2026 | Innovate, Build & Lead"
-        description="Join India's premier student innovation hackathon. Compete across AI, Web3, and Full Stack tracks with cash prizes, mentorship, and direct internship opportunities."
+        title={settings?.name ? `${settings.name} | Code-A-Nova` : "Code-A-Nova National Hackathon"}
+        description={settings?.description || "Join India's premier student innovation hackathon. Compete across AI, Web3, and Full Stack tracks with cash prizes, mentorship, and direct internship opportunities."}
       />
 
       {/* Futuristic Background Lights & Glowing Orbs */}

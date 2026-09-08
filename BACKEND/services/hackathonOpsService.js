@@ -83,7 +83,7 @@ async function getHackathonHealth(hackathonId = 'can-hackathon-2026') {
     sponsors,
   ] = await Promise.all([
     HackathonSetting.findOne({ hackathonId }).lean(),
-    HackathonTeam.find({ hackathonId, isDeleted: false })
+    HackathonTeam.find({ hackathonId, isDeleted: { $ne: true } })
       .select('teamId status paymentStatus track members review')
       .lean(),
     HackathonSubmission.find({ hackathonId }).select('teamId status isLocked submittedAt').lean(),
@@ -379,7 +379,7 @@ async function getOperationalAlerts(hackathonId = 'can-hackathon-2026') {
   const [settings, teams, submissions, assignments, evaluations, results, certificates, fulfillments, emailFailures] =
     await Promise.all([
       HackathonSetting.findOne({ hackathonId }).lean(),
-      HackathonTeam.find({ hackathonId, isDeleted: false }).select('teamId status paymentStatus').lean(),
+      HackathonTeam.find({ hackathonId, isDeleted: { $ne: true } }).select('teamId status paymentStatus').lean(),
       HackathonSubmission.find({ hackathonId }).select('teamId status isLocked').lean(),
       HackathonEditorialAssignment.find({ hackathonId, status: 'ACTIVE' }).lean(),
       HackathonEditorialEvaluation.find({ hackathonId, status: 'FINALIZED' }).lean(),
@@ -495,25 +495,28 @@ async function getOperationalAlerts(hackathonId = 'can-hackathon-2026') {
 /**
  * Email Delivery Analytics Summary
  */
-async function getEmailStatsSummary() {
+async function getEmailStatsSummary(hackathonId = null) {
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+  const baseMatch = hackathonId ? { hackathonId } : {};
+
   const [total, success, failed, pending, last24h, last7d, campaignCounts] = await Promise.all([
-    EmailLog.countDocuments({}),
-    EmailLog.countDocuments({ status: 'SUCCESS' }),
-    EmailLog.countDocuments({ status: 'FAILED' }),
-    EmailLog.countDocuments({ status: 'PENDING' }),
+    EmailLog.countDocuments(baseMatch),
+    EmailLog.countDocuments({ ...baseMatch, status: 'SUCCESS' }),
+    EmailLog.countDocuments({ ...baseMatch, status: 'FAILED' }),
+    EmailLog.countDocuments({ ...baseMatch, status: 'PENDING' }),
     EmailLog.aggregate([
-      { $match: { createdAt: { $gte: oneDayAgo } } },
+      { $match: { ...baseMatch, createdAt: { $gte: oneDayAgo } } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
     EmailLog.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      { $match: { ...baseMatch, createdAt: { $gte: sevenDaysAgo } } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
     EmailLog.aggregate([
+      ...(hackathonId ? [{ $match: { hackathonId } }] : []),
       { $group: { _id: '$campaign', total: { $sum: 1 }, success: { $sum: { $cond: [{ $eq: ['$status', 'SUCCESS'] }, 1, 0] } } } },
       { $sort: { total: -1 } },
       { $limit: 10 },
@@ -530,6 +533,7 @@ async function getEmailStatsSummary() {
 
   return {
     success: true,
+    hackathonId: hackathonId || null,
     total,
     byStatus: { success, failed, pending },
     successRate: total > 0 ? Number(((success / total) * 100).toFixed(1)) : 100,
@@ -640,13 +644,16 @@ async function exportResourceAsCsv(resource, query = {}, actor = {}) {
 
   let headers = [];
   let rows = [];
-  const hackathonId = query.hackathonId || 'can-hackathon-2026';
+  const hackathonId = query.hackathonId;
+  if (!hackathonId) {
+    throw new Error('Hackathon ID is required for dataset export.');
+  }
 
   switch (resource) {
     case 'teams': {
       headers = [
         { label: 'Team ID', key: 'teamId' },
-        { label: 'Team Name', key: 'name' },
+        { label: 'Team Name', getter: (r) => r.teamName || r.name || '' },
         { label: 'Track', key: 'track' },
         { label: 'Status', key: 'status' },
         { label: 'Payment Status', key: 'paymentStatus' },
@@ -657,7 +664,7 @@ async function exportResourceAsCsv(resource, query = {}, actor = {}) {
         { label: 'Member Count', getter: (r) => (r.members ? r.members.length + 1 : 1) },
         { label: 'Created At', getter: (r) => (r.createdAt ? new Date(r.createdAt).toISOString() : '') },
       ];
-      rows = await HackathonTeam.find({ hackathonId, isDeleted: false }).lean();
+      rows = await HackathonTeam.find({ hackathonId, isDeleted: { $ne: true } }).lean();
       break;
     }
 
@@ -792,7 +799,10 @@ async function exportResourceAsCsv(resource, query = {}, actor = {}) {
 /**
  * Fast Operational Quick Search across all primary entities
  */
-async function operationalSearch(query, hackathonId = 'can-hackathon-2026') {
+async function operationalSearch(query, hackathonId) {
+  if (!hackathonId) {
+    throw new Error('Hackathon ID is required for operational search.');
+  }
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
     return { success: true, teams: [], submissions: [], certificates: [] };
   }
@@ -803,7 +813,7 @@ async function operationalSearch(query, hackathonId = 'can-hackathon-2026') {
   const [teams, submissions, certificates] = await Promise.all([
     HackathonTeam.find({
       hackathonId,
-      isDeleted: false,
+      isDeleted: { $ne: true },
       $or: [
         { teamId: regex },
         { name: regex },
@@ -851,7 +861,7 @@ async function operationalSearch(query, hackathonId = 'can-hackathon-2026') {
 /**
  * Team 360 Comprehensive Lifecycle & Timeline
  */
-async function getTeam360(teamIdentifier, hackathonId = 'can-hackathon-2026') {
+async function getTeam360(teamIdentifier, hackathonId) {
   const isObjId = mongoose.Types.ObjectId.isValid(teamIdentifier);
   const teamQuery = isObjId
     ? { $or: [{ _id: teamIdentifier }, { teamId: teamIdentifier }] }

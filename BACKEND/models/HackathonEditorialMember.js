@@ -6,7 +6,7 @@ const hackathonEditorialMemberSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: [true, 'hackathonId is required'],
       index: true,
       trim: true,
     },

@@ -12,6 +12,10 @@ const validateEnv = () => {
     }
   });
 
+  if (!process.env.FRONTEND_URL && !process.env.CLIENT_URL) {
+    missing.push('FRONTEND_URL');
+  }
+
   if (!process.env.GROQ_API_KEY) {
     console.warn('⚠️ WARNING: GROQ_API_KEY is missing. AI Panel Interview features will not work.');
   }

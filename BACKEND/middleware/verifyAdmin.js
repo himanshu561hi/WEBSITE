@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Admin = require("../models/Admin");
 
 const verifyAdmin = async (req, res, next) => {
@@ -14,8 +15,8 @@ const verifyAdmin = async (req, res, next) => {
 
     const adminId = req.user.id || req.user.unifiedUserId;
 
-    if (!adminId) {
-      return res.status(401).json({ success: false, message: "Unauthorized: Missing user ID in token payload" });
+    if (!adminId || !mongoose.Types.ObjectId.isValid(adminId)) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin privileges required" });
     }
 
     // Verify against the existing Admin collection

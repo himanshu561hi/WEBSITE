@@ -353,12 +353,14 @@ async function runTwoStageImportTests() {
   // Create two teams with identical team name in different colleges
   const dupTeam1 = new HackathonTeam({
     teamId: 'CAN-9001',
+    hackathonId: 'can-hackathon-2026',
     teamName: 'TEST_TWOSTAGE_IdenticalName',
     leader: { name: 'Lead One', email: 'lead1@twostage.test', college: 'College A' },
     status: 'IMPORTED',
   });
   const dupTeam2 = new HackathonTeam({
     teamId: 'CAN-9002',
+    hackathonId: 'can-hackathon-2026',
     teamName: 'TEST_TWOSTAGE_IdenticalName',
     leader: { name: 'Lead Two', email: 'lead2@twostage.test', college: 'College B' },
     status: 'IMPORTED',

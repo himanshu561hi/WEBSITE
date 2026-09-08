@@ -44,6 +44,10 @@ const hackathonSettingSchema = new mongoose.Schema(
       default: 49,
       min: 0,
     },
+    isPaymentRequired: {
+      type: Boolean,
+      default: true,
+    },
     currency: {
       type: String,
       default: 'INR',
@@ -234,6 +238,12 @@ const hackathonSettingSchema = new mongoose.Schema(
       type: String,
       default: 'system',
     },
+    hackathonRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hackathon',
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -241,14 +251,16 @@ const hackathonSettingSchema = new mongoose.Schema(
 );
 
 // Helper static to get or initialize default setting
-hackathonSettingSchema.statics.getOrCreateSettings = async function (hackathonId = 'can-hackathon-2026') {
+// STRICT AUDIT RULE (Phase M2): Only allow legacy singleton fallback if hackathonId is the legacy 'can-hackathon-2026' AND allowFallback is true.
+hackathonSettingSchema.statics.getOrCreateSettings = async function (hackathonId = 'can-hackathon-2026', options = {}) {
+  const { allowFallback = true, autoCreate = true } = typeof options === 'boolean' ? { allowFallback: options } : options;
   let settings = await this.findOne({ hackathonId });
-  if (!settings) {
+  if (!settings && allowFallback && hackathonId === 'can-hackathon-2026') {
     settings = await this.findOne();
   }
-  if (!settings) {
+  if (!settings && autoCreate) {
     settings = await this.create({
-      hackathonId: 'can-hackathon-2026',
+      hackathonId,
     });
   }
   return settings;

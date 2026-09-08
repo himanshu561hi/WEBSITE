@@ -8,11 +8,25 @@ const HackathonAuditLog = require('../models/HackathonAuditLog');
 
 class HackathonCertificateService {
   /**
-   * Generates a deterministic unique certificate number: CAN-2026-XXXXXX
+   * Generates a deterministic unique certificate number: CAN-2026-XXXXXX for 2026, or CAN-[CODE]-XXXXXX
    */
-  generateCertificateNumber() {
-    const randomPart = crypto.randomBytes(4).toString('hex').toUpperCase();
-    return `CAN-2026-${randomPart}`;
+  generateCertificateNumber(hackathonId = 'can-hackathon-2026') {
+    // 3 bytes → 6 uppercase hex chars, matching CAN-2026-XXXXXX / CAN-CODE-XXXXXX
+    const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
+    if (!hackathonId || hackathonId === 'can-hackathon-2026') {
+      return `CAN-2026-${randomPart}`;
+    }
+    // Strip non-alphanumeric, uppercase the result
+    const stripped = String(hackathonId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    // Take first 7 chars + last char to preserve discriminating suffix (e.g. -a vs -b)
+    // This ensures IDs like m8-test-hack-a vs m8-test-hack-b produce M8TESTHA vs M8TESTHB
+    let cleanCode;
+    if (stripped.length <= 8) {
+      cleanCode = stripped;
+    } else {
+      cleanCode = stripped.slice(0, 7) + stripped.slice(-1);
+    }
+    return `CAN-${cleanCode}-${randomPart}`;
   }
 
   /**
@@ -37,6 +51,7 @@ class HackathonCertificateService {
     track,
     issueDate,
     clientUrl,
+    hackathonName,
   }) {
     const formattedDate = new Date(issueDate || Date.now()).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -50,12 +65,13 @@ class HackathonCertificateService {
 
     const primaryColor = isTopWinner ? '#d97706' : isRunnerUp ? '#4f46e5' : '#0284c7';
     const borderColor = isTopWinner ? '#f59e0b' : isRunnerUp ? '#6366f1' : '#38bdf8';
+    const orgName = hackathonName || 'Code-A-Nova National Hackathon';
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Code-A-Nova Hackathon Certificate - ${certificateNumber}</title>
+  <title>${orgName} Certificate - ${certificateNumber}</title>
   <style>
     @page { size: A4 landscape; margin: 0; }
     * { box-sizing: border-box; }
@@ -111,8 +127,8 @@ class HackathonCertificateService {
     <div class="cert-container">
       <div class="inner-border">
         <div class="cert-header">
-          <div class="org-title">Code-A-Nova National Hackathon</div>
-          <div class="org-sub">Official Certificate of Recognition • 2026 Edition</div>
+          <div class="org-title">${orgName}</div>
+          <div class="org-sub">Official Certificate of Recognition</div>
           <div class="cert-title">${award}</div>
           <div class="cert-lead">This authoritative credential is proudly presented to</div>
           <div class="recipient-name">${recipientName}</div>
@@ -146,7 +162,7 @@ class HackathonCertificateService {
           <div class="footer-col" style="text-align: right;">
             <div class="sig-line"></div>
             <div class="sig-name">Organizing Committee</div>
-            <div class="sig-title">Code-A-Nova Hackathon 2026</div>
+            <div class="sig-title">${hackathonName || 'Code-A-Nova Hackathon'}</div>
           </div>
         </div>
       </div>
@@ -160,25 +176,17 @@ class HackathonCertificateService {
    * Generates all eligible certificates for a hackathon
    */
   async generateAllEligibleCertificates({ hackathonId = 'can-hackathon-2026', adminId, actorDetails }) {
+    const targetHackathonId = hackathonId || 'can-hackathon-2026';
     const settings =
-      (await HackathonSetting.findOne({ hackathonId }).lean()) ||
-      (await HackathonSetting.findOne().lean()) ||
-      (await HackathonSetting.getOrCreateSettings(hackathonId)).toObject();
+      (await HackathonSetting.findOne({ hackathonId: targetHackathonId }).lean()) ||
+      (await HackathonSetting.getOrCreateSettings(targetHackathonId)).toObject();
     const isPublished = settings?.isResultsPublished;
 
-    // Fetch official results
+    // Fetch official results strictly scoped to targetHackathonId
     const resultFilter = {
+      hackathonId: targetHackathonId,
       resultStatus: { $in: ['APPROVED', 'PUBLISHED', 'LOCKED'] },
     };
-    if (hackathonId && hackathonId !== 'can-hackathon-2026') {
-      resultFilter.hackathonId = hackathonId;
-    } else {
-      resultFilter.$or = [
-        { hackathonId: 'can-hackathon-2026' },
-        { hackathonId: { $exists: false } },
-        { hackathonId: null },
-      ];
-    }
     const results = await HackathonResult.find(resultFilter).lean();
 
     const resultMap = new Map();
@@ -186,20 +194,12 @@ class HackathonCertificateService {
       resultMap.set(r.teamId, r);
     }
 
-    // Fetch confirmed teams
+    // Fetch confirmed teams strictly scoped to targetHackathonId
     const teamFilter = {
+      hackathonId: targetHackathonId,
       status: { $in: ['CONFIRMED', 'SUBMITTED', 'RESULT_PUBLISHED', 'EVALUATED'] },
       isDeleted: { $ne: true },
     };
-    if (hackathonId && hackathonId !== 'can-hackathon-2026') {
-      teamFilter.hackathonId = hackathonId;
-    } else {
-      teamFilter.$or = [
-        { hackathonId: 'can-hackathon-2026' },
-        { hackathonId: { $exists: false } },
-        { hackathonId: null },
-      ];
-    }
     const teams = await HackathonTeam.find(teamFilter).lean();
 
     let generatedCount = 0;
@@ -263,7 +263,7 @@ class HackathonCertificateService {
         try {
           // Check for existing active certificate of same type
           const existing = await HackathonCertificate.findOne({
-            hackathonId,
+            hackathonId: targetHackathonId,
             recipientEmail: rec.email,
             type: certType,
             version: 1,
@@ -274,8 +274,11 @@ class HackathonCertificateService {
             continue;
           }
 
-          const certId = `CAN-2026-CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-          const certNumber = this.generateCertificateNumber();
+          const cleanCode = targetHackathonId === 'can-hackathon-2026'
+            ? '2026'
+            : String(targetHackathonId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+          const certId = `CAN-${cleanCode}-CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+          const certNumber = this.generateCertificateNumber(targetHackathonId);
           const verificationCode = this.generateVerificationCode();
           const verificationUrl = `${clientUrl}/hackathon/certificate/verify/${verificationCode}`;
 
@@ -291,10 +294,11 @@ class HackathonCertificateService {
             track: team.track || 'General',
             issueDate: new Date(),
             clientUrl,
+            hackathonName: settings?.hackathonName || 'Code-A-Nova National Hackathon',
           });
 
           await HackathonCertificate.create({
-            hackathonId,
+            hackathonId: targetHackathonId,
             certificateId: certId,
             certificateNumber: certNumber,
             verificationCode,
@@ -328,13 +332,14 @@ class HackathonCertificateService {
 
     // Log to audit trail
     await HackathonAuditLog.create({
+      hackathonId: targetHackathonId,
       actorId: actorDetails?.id || adminId || 'admin',
       actorName: actorDetails?.name || 'Admin',
       actorEmail: actorDetails?.email || '',
       role: 'admin',
       action: 'CERTIFICATE_GENERATED',
       targetEntity: 'HackathonCertificate',
-      targetId: hackathonId,
+      targetId: targetHackathonId,
       newState: { generatedCount, skippedCount, errorsCount: errors.length },
       reason: 'Bulk generation of eligible hackathon certificates',
     });
@@ -380,6 +385,7 @@ class HackathonCertificateService {
     await cert.save();
 
     await HackathonAuditLog.create({
+      hackathonId: cert.hackathonId || 'can-hackathon-2026',
       actorId: actorDetails?.id || adminId || 'admin',
       actorName: actorDetails?.name || 'Admin',
       actorEmail: actorDetails?.email || '',
@@ -418,6 +424,24 @@ class HackathonCertificateService {
       };
     }
 
+    let hackathonName = 'Code-A-Nova National Hackathon';
+    if (cert.hackathonId) {
+      try {
+        const Hackathon = mongoose.models.Hackathon || require('../models/Hackathon');
+        const hackDoc = await Hackathon.findOne({ hackathonId: cert.hackathonId }).lean();
+        if (hackDoc?.name) {
+          hackathonName = hackDoc.name;
+        } else {
+          const setDoc = await HackathonSetting.findOne({ hackathonId: cert.hackathonId }).lean();
+          if (setDoc?.hackathonName) {
+            hackathonName = setDoc.hackathonName;
+          }
+        }
+      } catch (e) {
+        // Fallback to default
+      }
+    }
+
     if (cert.isRevoked) {
       return {
         isValid: false,
@@ -427,7 +451,7 @@ class HackathonCertificateService {
         certificateNumber: cert.certificateNumber,
         recipientName: cert.recipientName,
         award: cert.award,
-        hackathonName: 'Code-A-Nova National Hackathon 2026',
+        hackathonName,
         message: 'This certificate was officially issued but has been REVOKED.',
       };
     }
@@ -443,7 +467,7 @@ class HackathonCertificateService {
       projectName: cert.projectName,
       track: cert.track,
       issueDate: cert.issuedAt,
-      hackathonName: 'Code-A-Nova National Hackathon 2026',
+      hackathonName,
       status: cert.status,
     };
   }

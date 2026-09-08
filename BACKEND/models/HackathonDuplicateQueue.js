@@ -54,7 +54,7 @@ const hackathonDuplicateQueueSchema = new mongoose.Schema(
     },
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: true,
       index: true,
       trim: true,
     },
@@ -118,5 +118,7 @@ const hackathonDuplicateQueueSchema = new mongoose.Schema(
 
 hackathonDuplicateQueueSchema.index({ status: 1, createdAt: -1 });
 hackathonDuplicateQueueSchema.index({ incomingSourceId: 1, status: 1 });
+hackathonDuplicateQueueSchema.index({ hackathonId: 1, status: 1 });
+hackathonDuplicateQueueSchema.index({ hackathonId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('HackathonDuplicateQueue', hackathonDuplicateQueueSchema);

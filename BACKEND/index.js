@@ -1,8 +1,46 @@
 // api/index.js
 const express = require("express");
 const cors = require("cors");
+const crypto = require("crypto");
 const app = express();
-app.use(cors({ origin: "*" }));
+
+// Hardened CORS: Restricts origins in production while allowing local development and authorized origins
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
+  'https://www.codeanova.com',
+  'https://codeanova.com',
+  'https://code-a-nova.online',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. server-to-server, curl, tests without origin)
+    if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked: Origin ${origin} is not allowed.`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-hackathon-id', 'x-request-id', 'x-razorpay-signature'],
+}));
+
+// Request Correlation ID (X-Request-ID)
+app.use((req, res, next) => {
+  const incoming = req.headers['x-request-id'] || req.headers['x-correlation-id'];
+  const sanitizedId = typeof incoming === 'string' && incoming.length <= 128 && /^[a-zA-Z0-9_-]+$/.test(incoming)
+    ? incoming
+    : `can-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  req.id = sanitizedId;
+  res.setHeader('X-Request-ID', sanitizedId);
+  next();
+});
 
 try {
   const mongoose = require("mongoose");
@@ -46,6 +84,7 @@ const studentAssessmentRoutes = require("./routes/assessment/studentAssessment")
 const publicAssessmentRoutes  = require("./routes/assessment/publicAssessment");
 const auditLogRoutes = require("./routes/auditLogRoutes");
 const hackathonRoutes         = require("./routes/hackathon");
+const hackathonManagementRoutes = require("./routes/hackathonManagementRoutes");
 require("./scripts/v2NotificationsCron");
 
 // Global cached connection (very important for serverless!)
@@ -100,8 +139,18 @@ if (Sentry && process.env.SENTRY_DSN) {
 
 // Security Headers
 app.use(helmet({
+  contentSecurityPolicy: false, // Managed by reverse proxy/frontend to avoid breaking Razorpay checkout
   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  noSniff: true,
+  xssFilter: true,
+  frameguard: { action: 'sameorigin' }
 }));
 app.disable('x-powered-by');
 
@@ -173,6 +222,7 @@ app.use("/api/assessment",       studentAssessmentRoutes);
 app.use("/api/public/assessment",publicAssessmentRoutes);
 app.use("/api/admin/audit-logs", auditLogRoutes);
 app.use("/api/hackathon", hackathonRoutes);
+app.use("/api/hackathons", hackathonManagementRoutes);
 
 // Production Health Endpoint
 app.get("/healthz", async (req, res) => {
@@ -194,6 +244,28 @@ app.get("/", (req, res) => {
 if (Sentry && Sentry.Handlers && process.env.SENTRY_DSN) {
   app.use(Sentry.Handlers.errorHandler());
 }
+
+// Global Production Error Handling Middleware (Safe response without leaking internal stack traces or secrets)
+app.use((err, req, res, next) => {
+  const statusCode = err.status || err.statusCode || 500;
+  console.error(`[GlobalError] [${req.id || 'N/A'}] ${req.method} ${req.originalUrl}:`, err.message || err);
+
+  if (err.name === 'UnauthorizedError' || statusCode === 401) {
+    return res.status(401).json({ success: false, message: err.message || 'Authentication required' });
+  }
+
+  if (statusCode === 403) {
+    return res.status(403).json({ success: false, message: err.message || 'Forbidden' });
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' && statusCode === 500
+      ? 'An unexpected internal server error occurred.'
+      : (err.message || 'Internal server error'),
+    requestId: req.id || undefined,
+  });
+});
 
 // Initialize WhatsApp Web JS Client (Delegated to external microservice)
 const { initializeWhatsApp, queueWhatsAppMessage } = require('./utils/whatsappClient');

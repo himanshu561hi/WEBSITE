@@ -28,6 +28,7 @@ const hackathonAuditLogSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
+        'Hackathon',
         'HackathonSetting',
         'HackathonTeam',
         'HackathonPayment',
@@ -51,6 +52,12 @@ const hackathonAuditLogSchema = new mongoose.Schema(
       type: String,
       default: '',
       index: true,
+    },
+    hackathonId: {
+      type: String,
+      default: null,
+      index: true,
+      trim: true,
     },
     previousState: {
       type: mongoose.Schema.Types.Mixed,
@@ -87,6 +94,7 @@ hackathonAuditLogSchema.statics.log = async function ({
   action,
   targetEntity = 'General',
   targetId = '',
+  hackathonId = null,
   previousState = null,
   newState = null,
   reason = '',
@@ -108,6 +116,7 @@ hackathonAuditLogSchema.statics.log = async function ({
       action,
       targetEntity,
       targetId: targetId ? String(targetId) : '',
+      hackathonId: hackathonId || req?.hackathonId || null,
       previousState,
       newState,
       reason,
@@ -127,5 +136,7 @@ hackathonAuditLogSchema.index({ role: 1, createdAt: -1 });
 hackathonAuditLogSchema.index({ actorId: 1, createdAt: -1 });
 hackathonAuditLogSchema.index({ action: 1, createdAt: -1 });
 hackathonAuditLogSchema.index({ targetId: 1, createdAt: -1 });
+hackathonAuditLogSchema.index({ hackathonId: 1, createdAt: -1 });
+hackathonAuditLogSchema.index({ hackathonId: 1, targetEntity: 1, createdAt: -1 });
 
 module.exports = mongoose.model('HackathonAuditLog', hackathonAuditLogSchema);

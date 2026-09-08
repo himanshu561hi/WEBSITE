@@ -4,7 +4,8 @@ const hackathonPaymentSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'CAN-HACK-2026',
+      required: [true, 'hackathonId is required'],
+      trim: true,
       index: true,
     },
     teamId: {
@@ -78,5 +79,32 @@ const hackathonPaymentSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Auto-inherit hackathonId from parent team if omitted
+hackathonPaymentSchema.pre('validate', async function () {
+  if (!this.hackathonId) {
+    try {
+      const HackathonTeam = mongoose.model('HackathonTeam');
+      let parentTeam = null;
+      if (this.team && mongoose.isValidObjectId(this.team)) {
+        parentTeam = await HackathonTeam.findById(this.team).select('hackathonId').lean();
+      }
+      if (!parentTeam && this.teamId) {
+        parentTeam = await HackathonTeam.findOne({ teamId: this.teamId }).select('hackathonId').lean();
+      }
+      if (parentTeam?.hackathonId) {
+        this.hackathonId = parentTeam.hackathonId;
+      }
+    } catch (e) {
+      // Ignore error and let schema validation handle missing hackathonId
+    }
+  }
+});
+
+hackathonPaymentSchema.index({ hackathonId: 1, teamId: 1 });
+hackathonPaymentSchema.index({ hackathonId: 1, status: 1 });
+hackathonPaymentSchema.index({ hackathonId: 1, paymentId: 1 });
+hackathonPaymentSchema.index({ hackathonId: 1, createdAt: -1 });
+hackathonPaymentSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('HackathonPayment', hackathonPaymentSchema);

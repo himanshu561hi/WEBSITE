@@ -57,11 +57,14 @@ import {
   Compass,
   Video,
   GitMerge,
+  BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import UnstopImportModal from "./UnstopImportModal";
 import TeamDetailDrawer from "./TeamDetailDrawer";
 import TeamFormModal from "./TeamFormModal";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
+import HackathonListManager from "./HackathonListManager";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5006";
 
@@ -114,10 +117,29 @@ export default function HackathonAdminWorkspace() {
   const [duplicateQueueStatus, setDuplicateQueueStatus] = useState("PENDING");
   const [resolvingQueueId, setResolvingQueueId] = useState(null);
 
-  const fetchTeams = async (page = 1, overrideFilters = null) => {
+  // Multi-Hackathon Operational Isolation State (Phase M5)
+  const [selectedHackathonId, setSelectedHackathonId] = useState("can-hackathon-2026");
+  const [availableHackathons, setAvailableHackathons] = useState([]);
+
+  // Phase M9: Analytics State
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [globalAnalyticsData, setGlobalAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsViewMode, setAnalyticsViewMode] = useState("current"); // "current" | "global"
+
+  const getAdminHeaders = (overrideHackathonId = null) => {
+    const token = getAdminToken();
+    const h = { Authorization: `Bearer ${token}` };
+    const hid = overrideHackathonId !== null ? overrideHackathonId : selectedHackathonId;
+    if (hid) {
+      h["x-hackathon-id"] = hid;
+    }
+    return h;
+  };
+
+  const fetchTeams = async (page = 1, overrideFilters = null, overrideHackathonId = null) => {
     try {
       setLoadingTeams(true);
-      const token = getAdminToken();
       let url = `${BACKEND_URL}/api/hackathon/admin/teams?page=${page}&limit=50`;
       const search = overrideFilters && overrideFilters.search !== undefined ? overrideFilters.search : teamsSearch;
       const status = overrideFilters && overrideFilters.status !== undefined ? overrideFilters.status : teamsStatusFilter;
@@ -130,7 +152,7 @@ export default function HackathonAdminWorkspace() {
       if (payment) url += `&paymentStatus=${encodeURIComponent(payment)}`;
 
       const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setTeams(res.data.teams || []);
@@ -155,10 +177,9 @@ export default function HackathonAdminWorkspace() {
   const [submissionsStatusFilter, setSubmissionsStatusFilter] = useState("ALL");
   const [submissionsTrackFilter, setSubmissionsTrackFilter] = useState("ALL");
 
-  const fetchSubmissions = async (page = 1) => {
+  const fetchSubmissions = async (page = 1, overrideHackathonId = null) => {
     try {
       setLoadingSubmissions(true);
-      const token = getAdminToken();
       let url = `${BACKEND_URL}/api/hackathon/admin/submissions?page=${page}&limit=15`;
       if (submissionsSearch) url += `&search=${encodeURIComponent(submissionsSearch)}`;
       if (submissionsStatusFilter && submissionsStatusFilter !== "ALL") {
@@ -169,7 +190,7 @@ export default function HackathonAdminWorkspace() {
       }
 
       const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setSubmissions(res.data.submissions || []);
@@ -191,11 +212,10 @@ export default function HackathonAdminWorkspace() {
     if (!confirmUnlock) return;
 
     try {
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/submissions/${submissionId || teamId}/unlock`,
         { reason: "Admin unlocked submission from Submissions tab" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Submission unlocked successfully");
@@ -230,14 +250,13 @@ export default function HackathonAdminWorkspace() {
   });
   const [resettingJudgePassword, setResettingJudgePassword] = useState(false);
 
-  const fetchEditorialMembers = async () => {
+  const fetchEditorialMembers = async (overrideHackathonId = null) => {
     try {
       setLoadingEditorialMembers(true);
-      const token = getAdminToken();
       let url = `${BACKEND_URL}/api/hackathon/admin/editorial-members`;
       if (editorialSearch) url += `?search=${encodeURIComponent(editorialSearch)}`;
       const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setEditorialMembers(res.data.members || []);
@@ -261,11 +280,10 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setCreatingJudge(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/editorial-members`,
         createJudgeForm,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Editorial Judge created successfully!");
@@ -282,11 +300,10 @@ export default function HackathonAdminWorkspace() {
 
   const handleToggleJudgeActive = async (judge) => {
     try {
-      const token = getAdminToken();
       const res = await axios.put(
         `${BACKEND_URL}/api/hackathon/admin/editorial-members/${judge._id}`,
         { isActive: !judge.isActive },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(`Judge account ${!judge.isActive ? "activated" : "deactivated"} successfully.`);
@@ -309,11 +326,10 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setResettingJudgePassword(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/editorial-members/${selectedJudgeForReset._id}/reset-password`,
         resetJudgePasswordForm,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Password reset successfully. Judge must change it on first login.");
@@ -341,9 +357,8 @@ export default function HackathonAdminWorkspace() {
   const fetchAssignments = async () => {
     try {
       setLoadingAssignments(true);
-      const token = getAdminToken();
       const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/editorial-assignments`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(),
       });
       if (res.data?.success) {
         setAssignments(res.data.assignments || []);
@@ -363,11 +378,10 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setAssigningJudge(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/editorial-assignments`,
         assignForm,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Project assigned to judge successfully!");
@@ -385,10 +399,9 @@ export default function HackathonAdminWorkspace() {
   const handleDeleteAssignment = async (assignmentId) => {
     if (!window.confirm("Are you sure you want to remove this judge assignment?")) return;
     try {
-      const token = getAdminToken();
       const res = await axios.delete(
         `${BACKEND_URL}/api/hackathon/admin/editorial-assignments/${assignmentId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Assignment removed successfully.");
@@ -412,10 +425,9 @@ export default function HackathonAdminWorkspace() {
   const [reopenReasonText, setReopenReasonText] = useState("");
   const [reopeningEvaluation, setReopeningEvaluation] = useState(false);
 
-  const fetchEvaluations = async () => {
+  const fetchEvaluations = async (overrideHackathonId = null) => {
     try {
       setLoadingEvaluations(true);
-      const token = getAdminToken();
       let url = `${BACKEND_URL}/api/hackathon/admin/editorial-evaluations?`;
       if (evaluationsTrackFilter && evaluationsTrackFilter !== "ALL") {
         url += `&track=${encodeURIComponent(evaluationsTrackFilter)}`;
@@ -424,7 +436,7 @@ export default function HackathonAdminWorkspace() {
         url += `&status=${encodeURIComponent(evaluationsStatusFilter)}`;
       }
       const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setEvaluations(res.data.evaluations || []);
@@ -442,11 +454,10 @@ export default function HackathonAdminWorkspace() {
     if (!selectedEvaluationToReopen) return;
     try {
       setReopeningEvaluation(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/editorial-evaluations/${selectedEvaluationToReopen._id}/reopen`,
         { reason: reopenReasonText || "Admin reopened evaluation for review" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Evaluation reopened successfully. Judge can now edit scores.");
@@ -518,10 +529,9 @@ export default function HackathonAdminWorkspace() {
   const [reopeningResults, setReopeningResults] = useState(false);
   const [publishingResults, setPublishingResults] = useState(false);
 
-  const fetchResults = async () => {
+  const fetchResults = async (overrideHackathonId = null) => {
     try {
       setLoadingResults(true);
-      const token = getAdminToken();
       let url = `${BACKEND_URL}/api/hackathon/admin/results?`;
       if (resultsTrackFilter && resultsTrackFilter !== "ALL") {
         url += `&track=${encodeURIComponent(resultsTrackFilter)}`;
@@ -533,7 +543,7 @@ export default function HackathonAdminWorkspace() {
         url += `&search=${encodeURIComponent(resultsSearch.trim())}`;
       }
       const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setResults(res.data.results || []);
@@ -553,11 +563,10 @@ export default function HackathonAdminWorkspace() {
   const handleCalculateResults = async () => {
     try {
       setCalculatingResults(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/calculate`,
-        { hackathonId: "can-hackathon-2026" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(res.data.message || "Results calculated successfully!");
@@ -583,17 +592,16 @@ export default function HackathonAdminWorkspace() {
     if (!winnerModalResult) return;
     try {
       setSavingWinner(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/${winnerModalResult.teamId}/assign-winner`,
         {
-          hackathonId: "can-hackathon-2026",
+          hackathonId: selectedHackathonId || "can-hackathon-2026",
           category: winnerCategoryInput || null,
           prize: winnerPrizeInput || null,
           isWinner: isWinnerInput,
           isRunnerUp: isRunnerUpInput,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(`Winner category assigned to ${winnerModalResult.teamName}`);
@@ -624,15 +632,14 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setResolvingTie(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/resolve-tie`,
         {
-          hackathonId: "can-hackathon-2026",
+          hackathonId: selectedHackathonId || "can-hackathon-2026",
           teamOrders: tieOrders.map((t) => ({ teamId: t.teamId, rank: Number(t.rank) })),
           tieBreakReason: tieBreakReason.trim(),
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Tie successfully resolved!");
@@ -649,11 +656,10 @@ export default function HackathonAdminWorkspace() {
   const handleApproveResultsSubmit = async () => {
     try {
       setApprovingResults(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/approve`,
-        { hackathonId: "can-hackathon-2026" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Official results approved!");
@@ -670,11 +676,10 @@ export default function HackathonAdminWorkspace() {
   const handlePublishResultsToggle = async (shouldPublish) => {
     try {
       setPublishingResults(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/publish`,
-        { hackathonId: "can-hackathon-2026", publish: shouldPublish },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { hackathonId: selectedHackathonId || "can-hackathon-2026", publish: shouldPublish },
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(res.data.message);
@@ -695,15 +700,14 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setLockingResults(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/lock`,
         {
-          hackathonId: "can-hackathon-2026",
+          hackathonId: selectedHackathonId || "can-hackathon-2026",
           confirmLock: true,
           reason: lockResultsReason || "Official results locked by admin.",
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Official results locked permanently!");
@@ -727,14 +731,13 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setReopeningResults(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/results/reopen`,
         {
-          hackathonId: "can-hackathon-2026",
+          hackathonId: selectedHackathonId || "can-hackathon-2026",
           reason: reopenResultsReason.trim(),
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Results unlocked for revisions!");
@@ -771,10 +774,9 @@ export default function HackathonAdminWorkspace() {
     if (!cert?.htmlContent) {
       setLoadingCertHtml(true);
       try {
-        const token = getAdminToken();
         const id = cert.certificateId || cert._id || cert.certificateNumber;
         const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/certificates/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAdminHeaders(),
         });
         if (res.data?.success && res.data.certificate?.htmlContent) {
           setSelectedCertForView((prev) => ({
@@ -791,10 +793,9 @@ export default function HackathonAdminWorkspace() {
     }
   };
 
-  const fetchCertificates = async (page = 1) => {
+  const fetchCertificates = async (page = 1, overrideHackathonId = null) => {
     try {
       setLoadingCertificates(true);
-      const token = getAdminToken();
       let url = `${BACKEND_URL}/api/hackathon/admin/certificates?page=${page}&limit=15`;
       if (certificatesSearch) url += `&search=${encodeURIComponent(certificatesSearch)}`;
       if (certificatesTypeFilter && certificatesTypeFilter !== "ALL") {
@@ -803,7 +804,7 @@ export default function HackathonAdminWorkspace() {
       if (certificatesStatusFilter && certificatesStatusFilter !== "ALL") {
         url += `&status=${encodeURIComponent(certificatesStatusFilter)}`;
       }
-      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(url, { headers: getAdminHeaders(overrideHackathonId) });
       if (res.data?.success) {
         setCertificates(res.data.certificates || []);
         setCertificatesPage(res.data.pagination?.page || 1);
@@ -823,11 +824,10 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setGeneratingCertificates(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/certificates/generate`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(res.data.message || `Generated ${res.data.generatedCount} certificates successfully!`);
@@ -846,11 +846,10 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setEmailingCertificates(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/certificates/email-bulk`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { hackathonId: selectedHackathonId || "can-hackathon-2026" },
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(res.data.message || `Bulk dispatched ${res.data.sentCount} certificate emails!`);
@@ -865,11 +864,10 @@ export default function HackathonAdminWorkspace() {
 
   const handleEmailSingleCertificate = async (certificateId) => {
     try {
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/certificates/${certificateId}/email`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Certificate email dispatched successfully!");
@@ -889,11 +887,10 @@ export default function HackathonAdminWorkspace() {
     }
     try {
       setRevokingCertificate(true);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/certificates/${selectedCertForRevoke.certificateId}/revoke`,
         { reason: revocationReasonInput.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Certificate marked as REVOKED.");
@@ -950,6 +947,11 @@ export default function HackathonAdminWorkspace() {
   });
   const [newBenefitInput, setNewBenefitInput] = useState("");
   const [savingSponsor, setSavingSponsor] = useState(false);
+  const [showReuseSponsorModal, setShowReuseSponsorModal] = useState(false);
+  const [globalSponsors, setGlobalSponsors] = useState([]);
+  const [loadingGlobalSponsors, setLoadingGlobalSponsors] = useState(false);
+  const [globalSponsorSearch, setGlobalSponsorSearch] = useState("");
+  const [reusingSponsorId, setReusingSponsorId] = useState(null);
 
   const [prizeFulfillments, setPrizeFulfillments] = useState([]);
   const [loadingFulfillments, setLoadingFulfillments] = useState(false);
@@ -961,12 +963,11 @@ export default function HackathonAdminWorkspace() {
   const [savingFulfillment, setSavingFulfillment] = useState(false);
   const [notifyingFulfillmentId, setNotifyingFulfillmentId] = useState(null);
 
-  const fetchPrizes = async () => {
+  const fetchPrizes = async (overrideHackathonId = null) => {
     try {
       setLoadingPrizes(true);
-      const token = getAdminToken();
       const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/prizes`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setPrizes(res.data.prizes || []);
@@ -982,10 +983,13 @@ export default function HackathonAdminWorkspace() {
     e.preventDefault();
     try {
       setSavingPrize(true);
-      const token = getAdminToken();
       if (prizeFormMode === "create") {
-        const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/prizes`, prizeFormData, {
-          headers: { Authorization: `Bearer ${token}` },
+        const payload = {
+          ...prizeFormData,
+          hackathonId: selectedHackathonId || "can-hackathon-2026",
+        };
+        const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/prizes`, payload, {
+          headers: getAdminHeaders(),
         });
         if (res.data?.success) {
           toast.success("Prize created successfully!");
@@ -996,7 +1000,7 @@ export default function HackathonAdminWorkspace() {
         const res = await axios.put(
           `${BACKEND_URL}/api/hackathon/admin/prizes/${selectedPrizeForForm.prizeId}`,
           prizeFormData,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: getAdminHeaders() }
         );
         if (res.data?.success) {
           toast.success("Prize updated successfully!");
@@ -1016,9 +1020,8 @@ export default function HackathonAdminWorkspace() {
       return;
     }
     try {
-      const token = getAdminToken();
       const res = await axios.delete(`${BACKEND_URL}/api/hackathon/admin/prizes/${prizeId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(),
       });
       if (res.data?.success) {
         toast.success("Prize deleted successfully!");
@@ -1029,12 +1032,11 @@ export default function HackathonAdminWorkspace() {
     }
   };
 
-  const fetchSponsors = async () => {
+  const fetchSponsors = async (overrideHackathonId = null) => {
     try {
       setLoadingSponsors(true);
-      const token = getAdminToken();
       const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/sponsors`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setSponsors(res.data.sponsors || []);
@@ -1050,10 +1052,13 @@ export default function HackathonAdminWorkspace() {
     e.preventDefault();
     try {
       setSavingSponsor(true);
-      const token = getAdminToken();
       if (sponsorFormMode === "create") {
-        const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/sponsors`, sponsorFormData, {
-          headers: { Authorization: `Bearer ${token}` },
+        const payload = {
+          ...sponsorFormData,
+          hackathonId: selectedHackathonId || "can-hackathon-2026",
+        };
+        const res = await axios.post(`${BACKEND_URL}/api/hackathon/admin/sponsors`, payload, {
+          headers: getAdminHeaders(),
         });
         if (res.data?.success) {
           toast.success("Sponsor created successfully!");
@@ -1064,7 +1069,7 @@ export default function HackathonAdminWorkspace() {
         const res = await axios.put(
           `${BACKEND_URL}/api/hackathon/admin/sponsors/${selectedSponsorForForm.sponsorId}`,
           sponsorFormData,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: getAdminHeaders() }
         );
         if (res.data?.success) {
           toast.success("Sponsor updated successfully!");
@@ -1082,9 +1087,8 @@ export default function HackathonAdminWorkspace() {
   const handleDeleteSponsor = async (sponsorId) => {
     if (!window.confirm("Are you sure you want to delete this sponsor?")) return;
     try {
-      const token = getAdminToken();
       const res = await axios.delete(`${BACKEND_URL}/api/hackathon/admin/sponsors/${sponsorId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(),
       });
       if (res.data?.success) {
         toast.success("Sponsor deleted successfully!");
@@ -1095,12 +1099,11 @@ export default function HackathonAdminWorkspace() {
     }
   };
 
-  const fetchPrizeFulfillments = async () => {
+  const fetchPrizeFulfillments = async (overrideHackathonId = null) => {
     try {
       setLoadingFulfillments(true);
-      const token = getAdminToken();
       const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/prize-fulfillments`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setPrizeFulfillments(res.data.fulfillments || []);
@@ -1117,7 +1120,6 @@ export default function HackathonAdminWorkspace() {
     if (!selectedFulfillmentForEdit) return;
     try {
       setSavingFulfillment(true);
-      const token = getAdminToken();
       const res = await axios.patch(
         `${BACKEND_URL}/api/hackathon/admin/prize-fulfillments/${selectedFulfillmentForEdit.fulfillmentId}`,
         {
@@ -1126,7 +1128,7 @@ export default function HackathonAdminWorkspace() {
           voucherCodeMasked: fulfillmentVoucherInput,
           notes: fulfillmentNotesInput,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Fulfillment status updated successfully!");
@@ -1143,11 +1145,10 @@ export default function HackathonAdminWorkspace() {
   const handleNotifyFulfillment = async (fulfillmentId) => {
     try {
       setNotifyingFulfillmentId(fulfillmentId);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/prize-fulfillments/${fulfillmentId}/notify`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success("Winner prize notification dispatched via email!");
@@ -1189,12 +1190,12 @@ export default function HackathonAdminWorkspace() {
   const fetchOpsData = async () => {
     try {
       setLoadingOps(true);
-      const token = getAdminToken();
+      const headers = getAdminHeaders();
       const [healthRes, alertsRes, emailRes, secRes] = await Promise.allSettled([
-        axios.get(`${BACKEND_URL}/api/hackathon/admin/health`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${BACKEND_URL}/api/hackathon/admin/alerts`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${BACKEND_URL}/api/hackathon/admin/email-stats`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${BACKEND_URL}/api/hackathon/admin/security-summary`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${BACKEND_URL}/api/hackathon/admin/health`, { headers }),
+        axios.get(`${BACKEND_URL}/api/hackathon/admin/alerts`, { headers }),
+        axios.get(`${BACKEND_URL}/api/hackathon/admin/email-stats`, { headers }),
+        axios.get(`${BACKEND_URL}/api/hackathon/admin/security-summary`, { headers }),
       ]);
 
       if (healthRes.status === "fulfilled" && healthRes.value.data?.success) {
@@ -1288,12 +1289,11 @@ export default function HackathonAdminWorkspace() {
     return localStorage.getItem("adminToken") || localStorage.getItem("token");
   };
 
-  const fetchOverview = async () => {
+  const fetchOverview = async (overrideHackathonId = null) => {
     try {
       setLoading(true);
-      const token = getAdminToken();
       const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/overview`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAdminHeaders(overrideHackathonId),
       });
       if (res.data?.success) {
         setStats(res.data.stats || {});
@@ -1331,6 +1331,42 @@ export default function HackathonAdminWorkspace() {
     }
   };
 
+  const fetchAnalytics = async (overrideHackathonId = null) => {
+    try {
+      setLoadingAnalytics(true);
+      const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/analytics`, {
+        headers: getAdminHeaders(overrideHackathonId),
+      });
+      if (res.data?.success) {
+        setAnalyticsData(res.data);
+      }
+    } catch (err) {
+      console.error("fetchAnalytics error:", err);
+      if (activeTab === "analytics") {
+        toast.error(err.response?.data?.message || "Failed to load hackathon analytics");
+      }
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  const fetchGlobalAnalytics = async () => {
+    try {
+      setLoadingAnalytics(true);
+      const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/analytics/global`, {
+        headers: getAdminHeaders(),
+      });
+      if (res.data?.success) {
+        setGlobalAnalyticsData(res.data);
+      }
+    } catch (err) {
+      console.error("fetchGlobalAnalytics error:", err);
+      toast.error(err.response?.data?.message || "Failed to load global platform analytics");
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
   const fetchAuditLogs = async (page = 1) => {
     try {
       setLoadingLogs(true);
@@ -1357,13 +1393,12 @@ export default function HackathonAdminWorkspace() {
     }
   };
 
-  const fetchDuplicateQueue = async (page = 1) => {
+  const fetchDuplicateQueue = async (page = 1, overrideHackathonId = null) => {
     try {
       setDuplicateQueueLoading(true);
-      const token = getAdminToken();
       const res = await axios.get(
         `${BACKEND_URL}/api/hackathon/admin/duplicates?status=${duplicateQueueStatus}&page=${page}&limit=50`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders(overrideHackathonId) }
       );
       if (res.data?.success) {
         setDuplicateQueue(res.data.items || []);
@@ -1376,14 +1411,87 @@ export default function HackathonAdminWorkspace() {
     }
   };
 
+  const fetchAvailableHackathons = async () => {
+    try {
+      const token = getAdminToken();
+      const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/hackathons`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        setAvailableHackathons(res.data.data);
+      }
+    } catch (e) {
+      console.error("Failed to load available hackathons:", e);
+    }
+  };
+
+  const handleSwitchHackathon = (newId) => {
+    setSelectedHackathonId(newId);
+    // Clear state before refetching
+    setTeams([]);
+    setDuplicateQueue([]);
+    setSubmissions([]);
+    setSubmissionsTotal(0);
+    setEditorialMembers([]);
+    setAssignments([]);
+    setEvaluations([]);
+    setAggregatedResults([]);
+    setResults([]);
+    setResultsSummary(null);
+    setCertificates([]);
+    setCertificatesTotal(0);
+    setPrizes([]);
+    setSponsors([]);
+    setPrizeFulfillments([]);
+    setStats({
+      totalTeams: 0,
+      pptSubmitted: 0,
+      underReview: 0,
+      shortlisted: 0,
+      paymentPending: 0,
+      confirmed: 0,
+      finalSubmissions: 0,
+      evaluated: 0,
+    });
+    fetchOverview(newId);
+    fetchTeams(1, null, newId);
+    fetchDuplicateQueue(1, newId);
+    if (activeTab === "submissions") {
+      fetchSubmissions(1, newId);
+    }
+    if (activeTab === "editorial") {
+      fetchEditorialMembers(newId);
+      fetchAssignments();
+    }
+    if (activeTab === "judging") {
+      fetchEvaluations(newId);
+    }
+    if (activeTab === "results") {
+      fetchResults(newId);
+    }
+    if (activeTab === "certificates") {
+      fetchCertificates(1, newId);
+    }
+    if (activeTab === "prizes") {
+      fetchPrizes(newId);
+      fetchPrizeFulfillments(newId);
+      fetchSponsors(newId);
+    }
+    if (activeTab === "sponsors") {
+      fetchSponsors(newId);
+    }
+    if (activeTab === "analytics") {
+      fetchAnalytics(newId);
+    }
+  };
+
   const handleResolveDuplicate = async (queueId, decision, targetTeamId = "", notes = "") => {
     try {
       setResolvingQueueId(queueId);
-      const token = getAdminToken();
       const res = await axios.post(
         `${BACKEND_URL}/api/hackathon/admin/duplicates/${queueId}/resolve`,
         { decision, targetTeamId, notes },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: getAdminHeaders() }
       );
       if (res.data?.success) {
         toast.success(res.data.message || `Queue item resolved (${decision})`);
@@ -1398,6 +1506,7 @@ export default function HackathonAdminWorkspace() {
   };
 
   useEffect(() => {
+    fetchAvailableHackathons();
     fetchOverview();
     fetchOpsData();
     fetchEvaluations();
@@ -1444,8 +1553,16 @@ export default function HackathonAdminWorkspace() {
     if (activeTab === "sponsors") {
       fetchSponsors();
     }
+    if (activeTab === "analytics") {
+      if (analyticsViewMode === "global") {
+        fetchGlobalAnalytics();
+      } else {
+        fetchAnalytics();
+      }
+    }
   }, [
     activeTab,
+    analyticsViewMode,
     teamsStatusFilter,
     teamsTrackFilter,
     submissionsStatusFilter,
@@ -1571,6 +1688,28 @@ export default function HackathonAdminWorkspace() {
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Multi-Hackathon Workspace Switcher (Phase M5) */}
+            <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl shadow-inner">
+              <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold">Active Context</span>
+                <select
+                  value={selectedHackathonId}
+                  onChange={(e) => handleSwitchHackathon(e.target.value)}
+                  className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer pr-1"
+                >
+                  <option value="can-hackathon-2026" className="bg-slate-900 text-white">Code-A-Nova 2026 (Active)</option>
+                  {availableHackathons
+                    .filter((h) => h.hackathonId !== "can-hackathon-2026")
+                    .map((h) => (
+                      <option key={h.hackathonId} value={h.hackathonId} className="bg-slate-900 text-white">
+                        {h.name} ({h.status})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
             <button
               onClick={handleToggleActive}
               disabled={togglingActive}
@@ -1651,6 +1790,8 @@ export default function HackathonAdminWorkspace() {
         <div className="mt-6 pt-4 border-t border-white/10 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {[
             { id: "overview", label: "Overview", icon: Layers, badge: null },
+            { id: "analytics", label: "Analytics & KPIs", icon: BarChart3, badge: "M9" },
+            { id: "hackathons_list", label: "Hackathons", icon: Trophy, badge: "Multi" },
             {
               id: "operations",
               label: "Operations & Health",
@@ -1710,9 +1851,35 @@ export default function HackathonAdminWorkspace() {
         </div>
       </div>
 
+      {/* ─── TAB: MULTI-HACKATHON MANAGEMENT (PHASE M2) ─── */}
+      {activeTab === "hackathons_list" && (
+        <HackathonListManager />
+      )}
+
       {/* ─── TAB 1: OVERVIEW ─── */}
       {activeTab === "overview" && (
         <div className="space-y-6">
+          {/* Multi-Hackathon Quick Switcher Banner */}
+          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-4 text-white flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <Trophy className="w-5 h-5 text-indigo-400" />
+              <div>
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  Multi-Hackathon Management Active
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold border border-emerald-500/30">Phase M2</span>
+                </h4>
+                <p className="text-[11px] text-slate-400">Manage hackathons, configure URL slugs, and control which event is currently ACTIVE.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab("hackathons_list")}
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <span>Manage Hackathons</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             {[
@@ -2422,6 +2589,508 @@ export default function HackathonAdminWorkspace() {
         </div>
       )}
 
+      {/* ─── TAB: ANALYTICS & KPIS (PHASE M9) ─── */}
+      {activeTab === "analytics" && (
+        <div className="space-y-6">
+          {/* Top Analytics Header & View Mode Switcher */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-indigo-500/20 shadow-xl relative overflow-hidden">
+            <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                    <BarChart3 className="w-6 h-6 animate-pulse" />
+                  </span>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-3">
+                      Multi-Hackathon Analytics & Intelligence
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-extrabold border border-emerald-500/30">
+                        Phase M9
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Authoritative real-time aggregation across teams, payments, submissions, evaluations, results, and prize fulfillment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* View Mode Toggle Buttons */}
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-800/80 p-1 rounded-2xl border border-white/10 flex items-center gap-1">
+                  <button
+                    onClick={() => setAnalyticsViewMode("current")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      analyticsViewMode === "current"
+                        ? "bg-indigo-600 text-white shadow-md"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Event Analytics
+                  </button>
+                  <button
+                    onClick={() => setAnalyticsViewMode("global")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      analyticsViewMode === "global"
+                        ? "bg-indigo-600 text-white shadow-md"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Global Platform Overview
+                  </button>
+                </div>
+                <button
+                  onClick={() => (analyticsViewMode === "global" ? fetchGlobalAnalytics() : fetchAnalytics())}
+                  disabled={loadingAnalytics}
+                  className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                  title="Refresh Analytics"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingAnalytics ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* VIEW 1: CURRENT HACKATHON ANALYTICS */}
+          {analyticsViewMode === "current" && (
+            <>
+              {loadingAnalytics ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                  <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-600">Compiling real-time hackathon analytics...</p>
+                </div>
+              ) : !analyticsData ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                  <BarChart3 className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-700">No analytics data available</p>
+                  <button
+                    onClick={() => fetchAnalytics()}
+                    className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Event Meta Banner */}
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Trophy className="w-5 h-5 text-indigo-600" />
+                      <div>
+                        <div className="text-sm font-black text-slate-900">{analyticsData.hackathon?.name || "Hackathon"}</div>
+                        <div className="text-xs text-slate-500">
+                          ID: <span className="font-mono font-bold text-slate-700">{analyticsData.hackathonId}</span> | Slug: <span className="font-mono text-slate-700">{analyticsData.hackathon?.slug}</span> | Lifecycle: <span className="font-bold text-emerald-600">{analyticsData.hackathon?.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">Participation Fee:</span>
+                      <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">
+                        ₹{analyticsData.hackathon?.participationFee ?? 0}
+                      </span>
+                      <span className="text-xs text-slate-500 ml-2">Results Published:</span>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${analyticsData.hackathon?.isResultsPublished ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-600"}`}>
+                        {analyticsData.hackathon?.isResultsPublished ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 8 Overview KPIs Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                    {[
+                      { label: "Total Teams", val: analyticsData.overview?.totalTeams || 0, icon: Users, color: "text-blue-600" },
+                      { label: "Participants", val: analyticsData.overview?.uniqueParticipants || 0, icon: UserCheck, color: "text-indigo-600" },
+                      { label: "Confirmed", val: analyticsData.overview?.confirmedTeams || 0, icon: CheckCircle2, color: "text-emerald-600" },
+                      { label: "Submissions", val: analyticsData.overview?.submittedTeams || 0, icon: Code2, color: "text-cyan-600" },
+                      { label: "Evaluated", val: analyticsData.overview?.evaluatedTeams || 0, icon: Trophy, color: "text-purple-600" },
+                      { label: "Revenue", val: `₹${(analyticsData.payments?.totalRevenue || 0).toLocaleString()}`, icon: CreditCard, color: "text-green-600" },
+                      { label: "Certificates", val: analyticsData.certificates?.issuedCertificates || 0, icon: Award, color: "text-amber-600" },
+                      { label: "Sponsors", val: analyticsData.sponsors?.totalSponsors || 0, icon: Sparkles, color: "text-pink-600" },
+                    ].map((kpi, idx) => {
+                      const Icon = kpi.icon;
+                      return (
+                        <div key={idx} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-500 line-clamp-1">{kpi.label}</span>
+                            <Icon className={`w-4 h-4 ${kpi.color}`} />
+                          </div>
+                          <div className="mt-2 text-2xl font-black text-slate-900 tracking-tight">{kpi.val}</div>
+                          <div className="text-[10px] text-slate-400 mt-1">Real-time scoped</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 2-Column Analytics Sections */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Section 1: Registration & Teams Funnel */}
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-indigo-600" />
+                          Registration & Teams Funnel
+                        </h3>
+                        <span className="text-xs text-slate-500">
+                          Avg Size: <strong className="text-slate-800">{analyticsData.registration?.avgMembersPerTeam || 0}</strong> / team
+                        </span>
+                      </div>
+
+                      {/* Status Badges Grid */}
+                      <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 pt-2">
+                        {Object.entries(analyticsData.registration?.statusCounts || {}).map(([st, cnt]) => (
+                          <div key={st} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider line-clamp-1">{st}</span>
+                            <span className="text-base font-black text-slate-800 mt-0.5">{cnt || 0}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Sources and Tracks */}
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <span className="text-xs font-bold text-slate-700">Registration Sources:</span>
+                          <div className="mt-1 space-y-1">
+                            {Object.entries(analyticsData.registration?.sources || {}).map(([src, cnt]) => (
+                              <div key={src} className="flex items-center justify-between text-xs text-slate-600">
+                                <span>{src}</span>
+                                <span className="font-bold text-slate-900">{cnt}</span>
+                              </div>
+                            ))}
+                            {Object.keys(analyticsData.registration?.sources || {}).length === 0 && (
+                              <div className="text-xs text-slate-400">No team sources yet</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-xs font-bold text-slate-700">Tracks Distribution:</span>
+                          <div className="mt-1 space-y-1">
+                            {Object.entries(analyticsData.registration?.tracks || {}).map(([trk, cnt]) => (
+                              <div key={trk} className="flex items-center justify-between text-xs text-slate-600">
+                                <span className="line-clamp-1">{trk}</span>
+                                <span className="font-bold text-slate-900">{cnt}</span>
+                              </div>
+                            ))}
+                            {Object.keys(analyticsData.registration?.tracks || {}).length === 0 && (
+                              <div className="text-xs text-slate-400">No tracks registered</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Payments & Revenue Analytics */}
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-emerald-600" />
+                          Payments & Revenue Analytics
+                        </h3>
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                          Fee: ₹{analyticsData.payments?.feePerTeam || 0}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                        <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                          <span className="text-[10px] font-bold text-emerald-600 uppercase">Total Revenue</span>
+                          <div className="text-lg font-black text-emerald-700 mt-1">
+                            ₹{(analyticsData.payments?.totalRevenue || 0).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">Successful</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {analyticsData.payments?.successfulPayments || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-100">
+                          <span className="text-[10px] font-bold text-amber-600 uppercase">Pending</span>
+                          <div className="text-lg font-black text-amber-700 mt-1">
+                            {analyticsData.payments?.pendingPayments || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-rose-50/50 border border-rose-100">
+                          <span className="text-[10px] font-bold text-rose-600 uppercase">Failed</span>
+                          <div className="text-lg font-black text-rose-700 mt-1">
+                            {analyticsData.payments?.failedPayments || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">Total Records</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {analyticsData.payments?.totalPaymentRecords || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">Avg Amount</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            ₹{(analyticsData.payments?.avgPaymentAmount || 0).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Submissions Funnel */}
+                      <div className="pt-3 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-700">Project Submissions Completion:</span>
+                          <span className="font-extrabold text-indigo-600">
+                            {analyticsData.submissions?.completionRate || 0}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(100, Math.max(0, analyticsData.submissions?.completionRate || 0))}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                          <span>Final: {analyticsData.submissions?.finalSubmissions || 0}</span>
+                          <span>Drafts: {analyticsData.submissions?.drafts || 0}</span>
+                          <span>Locked: {analyticsData.submissions?.lockedSubmissions || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Evaluations & Judge Workload */}
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <Award className="w-4 h-4 text-purple-600" />
+                          Editorial & Evaluations Workload
+                        </h3>
+                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
+                          Avg Score: {analyticsData.evaluations?.avgScore || 0}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Total Evals</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {analyticsData.evaluations?.totalEvaluations || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100">
+                          <span className="text-[10px] font-bold text-purple-600 uppercase">Finalized</span>
+                          <div className="text-lg font-black text-purple-700 mt-1">
+                            {analyticsData.evaluations?.finalizedEvaluations || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-100">
+                          <span className="text-[10px] font-bold text-amber-600 uppercase">Pending</span>
+                          <div className="text-lg font-black text-amber-700 mt-1">
+                            {analyticsData.evaluations?.pendingEvaluations || 0}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Judge Table */}
+                      <div className="space-y-2 pt-2">
+                        <span className="text-xs font-bold text-slate-700">Judges in Event ({analyticsData.judgeWorkload?.totalJudges || 0}):</span>
+                        <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-100">
+                          {(analyticsData.judgeWorkload?.judges || []).map((j) => (
+                            <div key={j.judgeId} className="p-2.5 flex items-center justify-between text-xs hover:bg-slate-50 transition">
+                              <div>
+                                <div className="font-bold text-slate-800">{j.name}</div>
+                                <div className="text-[10px] text-slate-400">{j.email}</div>
+                              </div>
+                              <div className="flex items-center gap-3 text-right">
+                                <div>
+                                  <div className="font-bold text-slate-700">{j.evaluatedCount} / {j.assignedCount}</div>
+                                  <div className="text-[10px] text-slate-400">{j.completionRate}% done</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {(analyticsData.judgeWorkload?.judges || []).length === 0 && (
+                            <div className="p-4 text-center text-xs text-slate-400">No judges assigned to this event yet</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 4: Results, Certificates & Prizes */}
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-amber-600" />
+                          Results, Certificates & Prize Pipeline
+                        </h3>
+                        <span className="text-xs text-slate-500">
+                          Pool: <strong className="text-slate-900">₹{(analyticsData.prizes?.totalPrizePool || 0).toLocaleString()}</strong>
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Ranked Results</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {analyticsData.results?.totalResults || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-100">
+                          <span className="text-[10px] font-bold text-amber-600 uppercase">Winners</span>
+                          <div className="text-lg font-black text-amber-700 mt-1">
+                            {analyticsData.results?.winnersCount || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                          <span className="text-[10px] font-bold text-emerald-600 uppercase">Certificates</span>
+                          <div className="text-lg font-black text-emerald-700 mt-1">
+                            {analyticsData.certificates?.issuedCertificates || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Sponsors</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {analyticsData.sponsors?.totalSponsors || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Total Prizes</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {analyticsData.prizes?.totalPrizes || 0}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Disbursed</span>
+                          <div className="text-lg font-black text-emerald-600 mt-1">
+                            ₹{(analyticsData.prizes?.fulfillments?.totalDisbursedAmount || 0).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Prize Fulfillments Status */}
+                      <div className="pt-2 border-t border-slate-100 space-y-1">
+                        <span className="text-xs font-bold text-slate-700">Fulfillment Pipeline:</span>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {Object.entries(analyticsData.prizes?.fulfillments?.byStatus || {}).map(([st, cnt]) => (
+                            <span key={st} className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">
+                              {st}: {cnt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* VIEW 2: GLOBAL PLATFORM OVERVIEW */}
+          {analyticsViewMode === "global" && (
+            <div className="space-y-6">
+              {loadingAnalytics ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                  <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-600">Loading global platform analytics...</p>
+                </div>
+              ) : !globalAnalyticsData ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                  <BarChart3 className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-700">No global analytics data available</p>
+                  <button
+                    onClick={() => fetchGlobalAnalytics()}
+                    className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Global Platform Grand Totals */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {[
+                      { label: "Total Hackathons", val: globalAnalyticsData.hackathonsCount || 0, icon: Trophy, color: "text-indigo-600" },
+                      { label: "Total Teams (Global)", val: globalAnalyticsData.platformTotals?.totalTeams || 0, icon: Users, color: "text-blue-600" },
+                      { label: "Confirmed Teams", val: globalAnalyticsData.platformTotals?.totalConfirmedTeams || 0, icon: CheckCircle2, color: "text-emerald-600" },
+                      { label: "Submissions (Global)", val: globalAnalyticsData.platformTotals?.totalSubmissions || 0, icon: Code2, color: "text-cyan-600" },
+                      { label: "Platform Revenue", val: `₹${(globalAnalyticsData.platformTotals?.totalRevenue || 0).toLocaleString()}`, icon: CreditCard, color: "text-green-600" },
+                    ].map((card, idx) => {
+                      const Icon = card.icon;
+                      return (
+                        <div key={idx} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-500">{card.label}</span>
+                            <Icon className={`w-5 h-5 ${card.color}`} />
+                          </div>
+                          <div className="mt-2 text-2xl font-black text-slate-900">{card.val}</div>
+                          <div className="text-[10px] text-slate-400 mt-1">Platform aggregate</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Per-Hackathon Breakdown Table */}
+                  <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                    <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-indigo-600" />
+                      Hackathons Platform Breakdown
+                    </h3>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold">
+                            <th className="pb-3">Event Name</th>
+                            <th className="pb-3">Status</th>
+                            <th className="pb-3">Teams</th>
+                            <th className="pb-3">Confirmed</th>
+                            <th className="pb-3">Submissions</th>
+                            <th className="pb-3">Evaluations</th>
+                            <th className="pb-3">Certificates</th>
+                            <th className="pb-3">Revenue</th>
+                            <th className="pb-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                          {(globalAnalyticsData.hackathons || []).map((h) => (
+                            <tr key={h.hackathonId} className="hover:bg-slate-50 transition">
+                              <td className="py-3.5">
+                                <div className="font-bold text-slate-900">{h.name}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{h.hackathonId}</div>
+                              </td>
+                              <td className="py-3.5">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                  h.status === "ACTIVE"
+                                    ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                    : "bg-slate-100 text-slate-600"
+                                }`}>
+                                  {h.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 font-bold">{h.totalTeams || 0}</td>
+                              <td className="py-3.5 text-emerald-600 font-bold">{h.confirmedTeams || 0}</td>
+                              <td className="py-3.5 font-bold">{h.finalSubmissions || 0}</td>
+                              <td className="py-3.5 font-bold">{h.finalizedEvaluations || 0}</td>
+                              <td className="py-3.5 font-bold">{h.issuedCertificates || 0}</td>
+                              <td className="py-3.5 font-bold text-emerald-700">₹{(h.revenue || 0).toLocaleString()}</td>
+                              <td className="py-3.5 text-right">
+                                <button
+                                  onClick={() => {
+                                    handleSwitchHackathon(h.hackathonId);
+                                    setAnalyticsViewMode("current");
+                                  }}
+                                  className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-bold text-xs cursor-pointer transition"
+                                >
+                                  Open Workspace
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ─── TAB: OPERATIONS & PRODUCTION HEALTH (PHASE 9) ─── */}
       {activeTab === "operations" && (
         <div className="space-y-6">
@@ -2755,20 +3424,20 @@ export default function HackathonAdminWorkspace() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Total Sent</div>
-                  <div className="text-xl font-black text-slate-800 mt-1">{emailStats?.totalSent ?? 0}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Total Logged</div>
+                  <div className="text-xl font-black text-slate-800 mt-1">{emailStats?.total ?? emailStats?.totalSent ?? 0}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Delivered</div>
-                  <div className="text-xl font-black text-emerald-600 mt-1">{emailStats?.delivered ?? 0}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Successful</div>
+                  <div className="text-xl font-black text-emerald-600 mt-1">{emailStats?.byStatus?.success ?? emailStats?.delivered ?? 0}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Bounces</div>
-                  <div className="text-xl font-black text-amber-600 mt-1">{emailStats?.bounced ?? 0}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Failed</div>
+                  <div className="text-xl font-black text-rose-600 mt-1">{emailStats?.byStatus?.failed ?? emailStats?.bounced ?? 0}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Retry Queue</div>
-                  <div className="text-xl font-black text-slate-800 mt-1">{emailStats?.retryQueueSize ?? 0}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Pending</div>
+                  <div className="text-xl font-black text-amber-600 mt-1">{emailStats?.byStatus?.pending ?? emailStats?.retryQueueSize ?? 0}</div>
                 </div>
               </div>
 
@@ -7059,6 +7728,7 @@ export default function HackathonAdminWorkspace() {
       {/* Unstop Import Modal */}
       <UnstopImportModal
         isOpen={showImportModal}
+        hackathonId={selectedHackathonId}
         onClose={() => setShowImportModal(false)}
         onImportSuccess={() => {
           fetchOverview();

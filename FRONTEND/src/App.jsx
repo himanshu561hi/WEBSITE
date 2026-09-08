@@ -60,6 +60,7 @@ import PublicResultsPage from "./Pages/Hackathon/PublicResultsPage";
 import PublicCertificateVerificationPage from "./Pages/Hackathon/PublicCertificateVerificationPage";
 import EditorialLogin from "./Pages/Hackathon/Editorial/EditorialLogin";
 import EditorialDashboard from "./Pages/Hackathon/Editorial/EditorialDashboard";
+import { HackathonProvider } from "./context/HackathonContext";
 
 import ReferralTracker from "./Components/ReferralTracker";
 
@@ -159,8 +160,8 @@ function App() {
           <Route path="/hackathon/editorial/login" element={<EditorialLogin />} />
           <Route path="/hackathon/editorial" element={<EditorialDashboard />} />
 
-          <Route path="/hackathon" element={<HackathonPortal />} />
-          <Route path="/hackathon/*" element={<HackathonPortal />} />
+          <Route path="/hackathon" element={<HackathonProvider><HackathonPortal /></HackathonProvider>} />
+          <Route path="/hackathon/:slug" element={<HackathonProvider><HackathonPortal /></HackathonProvider>} />
           <Route path="/resume-builder" element={<PublicResumeBuilder />} />
           <Route path="/mock-interview" element={<PublicMockInterview />} />
           <Route path="/privacy-policy" element={<Privacy />} />

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const HackathonResult = require('../models/HackathonResult');
 const HackathonTeam = require('../models/HackathonTeam');
 const HackathonSubmission = require('../models/HackathonSubmission');
@@ -13,23 +14,20 @@ class HackathonResultService {
   /**
    * Run server-side score aggregation and ranking
    */
-  static async calculateResults({ hackathonId = 'can-hackathon-2026', actorId, actorName, actorEmail, req }) {
+  static async calculateResults({ hackathonId, actorId, actorName, actorEmail, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+
     // 1. Verify hackathon settings & lock status
-    const setting =
-      (await HackathonSetting.findOne({ hackathonId })) ||
-      (await HackathonSetting.findOne()) ||
-      (await HackathonSetting.getOrCreateSettings(hackathonId));
+    const setting = await HackathonSetting.getOrCreateSettings(targetHackathonId);
     if (setting?.resultsLocked) {
       throw new Error('Official results are locked and cannot be recalculated without explicit administrative reopening.');
     }
 
-    // 2. Fetch all teams in the hackathon
-    const teamFilter = { isDeleted: { $ne: true } };
-    if (hackathonId && hackathonId !== 'can-hackathon-2026') {
-      teamFilter.hackathonId = hackathonId;
-    } else {
-      teamFilter.$or = [{ hackathonId: 'can-hackathon-2026' }, { hackathonId: { $exists: false } }, { hackathonId: null }];
-    }
+    // 2. Fetch all teams strictly belonging to the target hackathon
+    const teamFilter = {
+      hackathonId: targetHackathonId,
+      isDeleted: { $ne: true },
+    };
     const teams = await HackathonTeam.find(teamFilter).lean();
 
     if (!teams || teams.length === 0) {
@@ -50,15 +48,15 @@ class HackathonResultService {
     const teamStringIds = teams.map((t) => t.teamId);
 
     const [submissions, assignments, finalizedEvaluations] = await Promise.all([
-      HackathonSubmission.find({ hackathonId }).lean(),
+      HackathonSubmission.find({ hackathonId: targetHackathonId }).lean(),
       HackathonEditorialAssignment.find({
-        hackathonId,
+        hackathonId: targetHackathonId,
         status: 'ACTIVE',
       })
         .populate('editorialMember', 'name email role isActive')
         .lean(),
       HackathonEditorialEvaluation.find({
-        hackathonId,
+        hackathonId: targetHackathonId,
         status: 'FINALIZED',
         isLocked: true,
       })
@@ -227,13 +225,15 @@ class HackathonResultService {
     const allRanked = [...eligibleTeams, ...ineligibleTeams];
 
     // 7. Persist or Update into HackathonResult collection
-    // Automatically purge stale result records for teams that were deleted or no longer exist
-    await HackathonResult.deleteMany({
-      hackathonId,
-      teamId: { $nin: teamStringIds },
-    });
+    // Automatically purge stale result records for teams that were deleted or no longer exist in this hackathon
+    if (teamStringIds.length > 0) {
+      await HackathonResult.deleteMany({
+        hackathonId: targetHackathonId,
+        teamId: { $nin: teamStringIds },
+      });
+    }
 
-    const existingResults = await HackathonResult.find({ hackathonId }).lean();
+    const existingResults = await HackathonResult.find({ hackathonId: targetHackathonId }).lean();
     const existingMap = {};
     existingResults.forEach((ex) => {
       existingMap[ex.teamId] = ex;
@@ -251,7 +251,7 @@ class HackathonResultService {
       }
 
       const updateData = {
-        hackathonId,
+        hackathonId: targetHackathonId,
         team: item.teamObjectId,
         teamId: item.teamId,
         teamName: item.teamName,
@@ -265,6 +265,7 @@ class HackathonResultService {
         pendingJudgeCount: item.pendingJudgeCount,
         rankingStatus: item.rankingStatus,
         statusReason: item.statusReason,
+        isTie: item.tieDetails?.isTie || false,
         resultStatus: existing?.resultStatus === 'APPROVED' ? 'APPROVED' : 'CALCULATED',
         scoreSnapshot: item.scoreSnapshot,
         tieDetails: item.tieDetails,
@@ -283,7 +284,7 @@ class HackathonResultService {
       }
 
       await HackathonResult.findOneAndUpdate(
-        { hackathonId, teamId: item.teamId },
+        { hackathonId: targetHackathonId, teamId: item.teamId },
         {
           $set: updateData,
           $push: {
@@ -305,13 +306,14 @@ class HackathonResultService {
 
     // 8. Log Audit Event
     await HackathonAuditLog.log({
+      hackathonId: targetHackathonId,
       actorId: actorId || 'admin',
       actorName: actorName || 'Administrator',
       actorEmail: actorEmail || '',
       role: 'admin',
       action: isRecalculation ? 'RESULTS_RECALCULATED' : 'RESULTS_CALCULATED',
       targetEntity: 'HackathonResult',
-      targetId: hackathonId,
+      targetId: targetHackathonId,
       newState: {
         totalConsidered: teams.length,
         eligibleCount: eligibleTeams.length,
@@ -339,55 +341,67 @@ class HackathonResultService {
   /**
    * Resolve a tie administratively
    */
-  static async resolveTie({ hackathonId = 'can-hackathon-2026', teamOrders, tieBreakReason, actorId, actorName, actorEmail, req }) {
-    // teamOrders is an array of { teamId, rank }
-    if (!Array.isArray(teamOrders) || teamOrders.length === 0) {
+  static async resolveTie({ hackathonId, teamOrders, resolutions, tieBreakReason, actorId, actorName, actorEmail, user, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+    const orders = teamOrders || resolutions;
+
+    // orders is an array of { teamId, rank, reason? }
+    if (!Array.isArray(orders) || orders.length === 0) {
       throw new Error('Valid team ranking order is required to resolve tie.');
     }
-    if (!tieBreakReason || !tieBreakReason.trim()) {
+    const finalReason = tieBreakReason || orders.find((o) => o.reason)?.reason;
+    if (!finalReason || !finalReason.trim()) {
       throw new Error('Administrative tie-break reason is mandatory.');
     }
 
     const setting =
-      (await HackathonSetting.findOne({ hackathonId })) ||
-      (await HackathonSetting.findOne()) ||
-      (await HackathonSetting.getOrCreateSettings(hackathonId));
+      (await HackathonSetting.findOne({ hackathonId: targetHackathonId })) ||
+      (await HackathonSetting.getOrCreateSettings(targetHackathonId));
     if (setting?.resultsLocked) {
       throw new Error('Results are locked and tie cannot be modified.');
     }
 
     const now = new Date();
     const resolvedTeams = [];
+    const name = actorName || user?.name || user?.email || 'admin';
+    const email = actorEmail || user?.email || '';
 
-    for (const item of teamOrders) {
-      const resultDoc = await HackathonResult.findOne({ hackathonId, teamId: item.teamId });
+    for (const item of orders) {
+      const isObjectId = mongoose.isValidObjectId(item.teamId);
+      const resultDoc = await HackathonResult.findOne({
+        hackathonId: targetHackathonId,
+        $or: [{ teamId: item.teamId }, { team: isObjectId ? item.teamId : null }],
+      });
       if (!resultDoc) {
-        throw new Error(`Result record for team ${item.teamId} not found.`);
+        throw new Error(`Result record for team ${item.teamId} not found in hackathon ${targetHackathonId}.`);
       }
       if (resultDoc.isLocked) {
         throw new Error(`Result for team ${item.teamId} is locked.`);
       }
 
+      const specificReason = item.reason || finalReason.trim();
       const previousRank = resultDoc.rank;
       resultDoc.rank = item.rank;
       resultDoc.rankingStatus = 'READY';
-      resultDoc.statusReason = `Tie resolved by admin: ${tieBreakReason.trim()}`;
+      resultDoc.isTie = false;
+      resultDoc.tieBreakReason = specificReason;
+      resultDoc.statusReason = `Tie resolved by admin: ${specificReason}`;
       resultDoc.tieDetails = {
         isTie: false,
         tiedWithTeamIds: [],
-        resolvedBy: actorName || 'admin',
+        resolvedBy: name,
         resolvedAt: now,
-        tieBreakReason: tieBreakReason.trim(),
+        tieBreakReason: specificReason,
         tieMethod: 'ADMIN_DECISION',
       };
 
       resultDoc.history.push({
         action: 'RESULT_TIE_RESOLVED',
-        actor: actorName || 'admin',
+        actor: name,
         timestamp: now,
         previousState: { rank: previousRank, rankingStatus: 'TIE' },
         newState: { rank: item.rank, rankingStatus: 'READY' },
-        reason: tieBreakReason.trim(),
+        reason: specificReason,
       });
 
       await resultDoc.save();
@@ -395,14 +409,15 @@ class HackathonResultService {
     }
 
     await HackathonAuditLog.log({
-      actorId: actorId || 'admin',
-      actorName: actorName || 'Administrator',
-      actorEmail: actorEmail || '',
+      hackathonId: targetHackathonId,
+      actorId: actorId || String(user?._id || user?.id || 'admin'),
+      actorName: name,
+      actorEmail: email,
       role: 'admin',
       action: 'RESULT_TIE_RESOLVED',
       targetEntity: 'HackathonResult',
-      targetId: hackathonId,
-      newState: { resolvedTeams, tieBreakReason: tieBreakReason.trim() },
+      targetId: targetHackathonId,
+      newState: { resolvedTeams, tieBreakReason: finalReason.trim() },
       req,
     });
 
@@ -410,6 +425,192 @@ class HackathonResultService {
       success: true,
       message: 'Tie successfully resolved.',
       resolvedTeams,
+    };
+  }
+
+  /**
+   * Assign official winner award to a team
+   */
+  static async assignWinner({ hackathonId, teamId, winnerCategory, category, prize, isWinner = true, isRunnerUp = false, user, actorName, actorEmail, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+    const isObjectId = mongoose.isValidObjectId(teamId);
+    const result = await HackathonResult.findOne({
+      hackathonId: targetHackathonId,
+      $or: [{ teamId }, { team: isObjectId ? teamId : null }],
+    });
+
+    if (!result) {
+      throw new Error(`Result not found for team ${teamId} in hackathon ${targetHackathonId}`);
+    }
+
+    const assignedCategory = winnerCategory || category || result.category;
+    result.category = assignedCategory;
+    result.winnerCategory = assignedCategory;
+    result.isWinner = isWinner;
+    result.isRunnerUp = isRunnerUp;
+    if (prize) result.prize = prize;
+
+    const name = actorName || user?.name || user?.email || 'admin';
+    result.history.push({
+      action: 'WINNER_ASSIGNED',
+      actor: name,
+      timestamp: new Date(),
+      newState: { category: assignedCategory, isWinner, isRunnerUp, prize },
+    });
+
+    await result.save();
+    return result;
+  }
+
+  /**
+   * Approve official results and create ranking snapshot
+   */
+  static async approveResults({ hackathonId, user, actorName, actorEmail, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+    const results = await HackathonResult.find({ hackathonId: targetHackathonId });
+    if (!results || results.length === 0) {
+      throw new Error('No results found to approve.');
+    }
+
+    const now = new Date();
+    const approvedByName = actorName || user?.name || user?.email || 'Administrator';
+
+    for (const resDoc of results) {
+      resDoc.resultStatus = 'APPROVED';
+      resDoc.approvedBy = approvedByName;
+      resDoc.approvedAt = now;
+      resDoc.rankingSnapshot = {
+        rank: resDoc.rank,
+        finalScore: resDoc.finalScore,
+        category: resDoc.category,
+        prize: resDoc.prize,
+        isWinner: resDoc.isWinner,
+        isRunnerUp: resDoc.isRunnerUp,
+        approvedAt: now,
+        approvedBy: approvedByName,
+      };
+      await resDoc.save();
+    }
+
+    return { success: true, approvedCount: results.length };
+  }
+
+  /**
+   * Lock official results
+   */
+  static async lockResults({ hackathonId, reason, user, actorName, actorEmail, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+    const setting =
+      (await HackathonSetting.findOne({ hackathonId: targetHackathonId })) ||
+      (await HackathonSetting.getOrCreateSettings(targetHackathonId));
+
+    const now = new Date();
+    const actor = actorName || user?.name || user?.email || 'Administrator';
+    const lockReason = reason || 'Official results permanently finalized and locked.';
+
+    setting.resultsLocked = true;
+    setting.resultsLockedAt = now;
+    setting.resultsLockedBy = actor;
+    await setting.save();
+
+    const results = await HackathonResult.find({ hackathonId: targetHackathonId });
+    for (const resDoc of results) {
+      resDoc.isLocked = true;
+      resDoc.resultStatus = 'LOCKED';
+      resDoc.lockedAt = now;
+      resDoc.lockedBy = actor;
+      resDoc.lockReason = lockReason;
+      await resDoc.save();
+    }
+
+    return { success: true, lockedCount: results.length };
+  }
+
+  /**
+   * Reopen official results
+   */
+  static async reopenResults({ hackathonId, reason, user, actorName, actorEmail, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+    const setting =
+      (await HackathonSetting.findOne({ hackathonId: targetHackathonId })) ||
+      (await HackathonSetting.getOrCreateSettings(targetHackathonId));
+
+    const now = new Date();
+    const actor = actorName || user?.name || user?.email || 'Administrator';
+    const reopenReason = (reason || 'Need re-evaluation').trim();
+
+    setting.resultsLocked = false;
+    await setting.save();
+
+    const results = await HackathonResult.find({ hackathonId: targetHackathonId });
+    for (const resDoc of results) {
+      resDoc.isLocked = false;
+      resDoc.resultStatus = 'REOPENED';
+      resDoc.reopenedAt = now;
+      resDoc.reopenedBy = actor;
+      resDoc.reopenReason = reopenReason;
+      await resDoc.save();
+    }
+
+    return { success: true, reopenedCount: results.length };
+  }
+
+  /**
+   * Publish official results
+   */
+  static async publishResults({ hackathonId, publish = true, user, actorName, actorEmail, req }) {
+    const targetHackathonId = hackathonId || req?.hackathonId || 'can-hackathon-2026';
+    const setting =
+      (await HackathonSetting.findOne({ hackathonId: targetHackathonId })) ||
+      (await HackathonSetting.getOrCreateSettings(targetHackathonId));
+
+    const now = new Date();
+    const actor = actorName || user?.name || user?.email || 'Administrator';
+
+    setting.isResultsPublished = publish;
+    if (publish) setting.resultsPublishedAt = now;
+    await setting.save();
+
+    const results = await HackathonResult.find({ hackathonId: targetHackathonId });
+    for (const resDoc of results) {
+      resDoc.isPublished = publish;
+      resDoc.resultStatus = publish ? 'PUBLISHED' : 'APPROVED';
+      if (publish) {
+        resDoc.publishedAt = now;
+        resDoc.publishedBy = actor;
+      }
+      await resDoc.save();
+
+      if (publish) {
+        await HackathonTeam.updateOne(
+          { _id: resDoc.team, status: { $ne: 'REJECTED' } },
+          { $set: { status: 'RESULT_PUBLISHED' } }
+        );
+      }
+    }
+
+    return { success: true, publishedCount: results.length };
+  }
+
+  /**
+   * Get isolated results summary counters for a hackathon
+   */
+  static async getResultsSummary({ hackathonId }) {
+    const targetHackathonId = hackathonId || 'can-hackathon-2026';
+    const allResults = await HackathonResult.find({ hackathonId: targetHackathonId })
+      .populate('team', 'isDeleted')
+      .lean();
+    const validResults = allResults.filter((r) => r.team && !r.team.isDeleted);
+    return {
+      totalResults: validResults.length,
+      total: validResults.length,
+      eligible: validResults.filter((r) => r.rankingStatus === 'READY').length,
+      pending: validResults.filter((r) => r.rankingStatus === 'PENDING_EVALUATIONS').length,
+      ineligible: validResults.filter((r) => r.rankingStatus === 'INELIGIBLE').length,
+      ties: validResults.filter((r) => r.rankingStatus === 'TIE').length,
+      approved: validResults.filter((r) => ['APPROVED', 'PUBLISHED', 'LOCKED'].includes(r.resultStatus)).length,
+      published: validResults.filter((r) => r.isPublished).length,
+      locked: validResults.filter((r) => r.isLocked).length,
     };
   }
 }

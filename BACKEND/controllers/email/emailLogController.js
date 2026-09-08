@@ -13,8 +13,19 @@ exports.getLogs = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 20;
     const skip = (page - 1) * limit;
 
-    const { search, status, campaign, source, startDate, endDate, domain } = req.query;
+    const { search, status, campaign, source, startDate, endDate, domain, eventType } = req.query;
+    const hackathonId = req.query.hackathonId || req.headers?.['x-hackathon-id'] || req.hackathonId;
     const query = {};
+
+    // Apply hackathon scope filter
+    if (hackathonId && hackathonId !== 'ALL' && hackathonId !== 'all') {
+      query.hackathonId = hackathonId;
+    }
+
+    // Apply eventType filter
+    if (eventType && eventType !== 'ALL' && eventType !== 'All') {
+      query.eventType = eventType;
+    }
 
     // Apply status filter
     if (status && status !== 'ALL' && status !== 'All') {
@@ -101,6 +112,9 @@ exports.getLogById = async (req, res) => {
 // 3. Get comprehensive Dashboard Analytics & Charts
 exports.getAnalytics = async (req, res) => {
   try {
+    const hackathonId = req.query.hackathonId || req.headers?.['x-hackathon-id'] || req.hackathonId;
+    const baseMatch = (hackathonId && hackathonId !== 'ALL' && hackathonId !== 'all') ? { hackathonId } : {};
+
     const now = new Date();
     // Accurately compute Indian Standard Time (IST, UTC+5:30) day boundaries
     const istOffsetMs = 5.5 * 60 * 60 * 1000;
@@ -129,14 +143,15 @@ exports.getAnalytics = async (req, res) => {
       dailyStatsRaw,
       monthlyStatsRaw,
     ] = await Promise.all([
-      EmailLog.countDocuments(),
-      EmailLog.countDocuments({ status: 'SUCCESS' }),
-      EmailLog.countDocuments({ status: 'FAILED' }),
-      EmailLog.countDocuments({ createdAt: { $gte: startOfToday } }),
-      EmailLog.countDocuments({ createdAt: { $gte: startOfWeek } }),
-      EmailLog.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      EmailLog.countDocuments(baseMatch),
+      EmailLog.countDocuments({ ...baseMatch, status: 'SUCCESS' }),
+      EmailLog.countDocuments({ ...baseMatch, status: 'FAILED' }),
+      EmailLog.countDocuments({ ...baseMatch, createdAt: { $gte: startOfToday } }),
+      EmailLog.countDocuments({ ...baseMatch, createdAt: { $gte: startOfWeek } }),
+      EmailLog.countDocuments({ ...baseMatch, createdAt: { $gte: startOfMonth } }),
       // Campaign wise distribution
       EmailLog.aggregate([
+        ...(Object.keys(baseMatch).length > 0 ? [{ $match: baseMatch }] : []),
         {
           $group: {
             _id: '$campaign',
@@ -151,7 +166,10 @@ exports.getAnalytics = async (req, res) => {
       // Daily emails for the last 14 days
       EmailLog.aggregate([
         {
-          $match: { createdAt: { $gte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) } },
+          $match: {
+            ...baseMatch,
+            createdAt: { $gte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) },
+          },
         },
         {
           $group: {
@@ -165,7 +183,10 @@ exports.getAnalytics = async (req, res) => {
       // Monthly emails for the last 12 months
       EmailLog.aggregate([
         {
-          $match: { createdAt: { $gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) } },
+          $match: {
+            ...baseMatch,
+            createdAt: { $gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) },
+          },
         },
         {
           $group: {

@@ -4,8 +4,9 @@ const hackathonCertificateSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: [true, 'hackathonId is required'],
       index: true,
+      trim: true,
     },
     certificateId: {
       type: String,
@@ -162,6 +163,27 @@ const hackathonCertificateSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Pre-validate hook: auto-inherit hackathonId from team if missing
+hackathonCertificateSchema.pre('validate', async function () {
+  if (!this.hackathonId) {
+    try {
+      const HackathonTeam = mongoose.model('HackathonTeam');
+      let parentTeam = null;
+      if (this.team && mongoose.isValidObjectId(this.team)) {
+        parentTeam = await HackathonTeam.findById(this.team).select('hackathonId').lean();
+      }
+      if (!parentTeam && this.teamId) {
+        parentTeam = await HackathonTeam.findOne({ teamId: this.teamId }).select('hackathonId').lean();
+      }
+      if (parentTeam?.hackathonId) {
+        this.hackathonId = parentTeam.hackathonId;
+      }
+    } catch (e) {
+      // Ignore error and let validation rule handle missing hackathonId
+    }
+  }
+});
 
 // Indexes for verification lookups, operational filtering, and uniqueness
 hackathonCertificateSchema.index(

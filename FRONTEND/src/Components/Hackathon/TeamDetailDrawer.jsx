@@ -557,7 +557,7 @@ export default function TeamDetailDrawer({
                     {
                       step: 3,
                       key: "PAYMENT",
-                      label: "₹49 Payment",
+                      label: "Participation Fee",
                       status: team?.paymentStatus === "PAID" ? "COMPLETED" : "PENDING",
                       detail: team?.paymentStatus,
                     },
@@ -730,7 +730,7 @@ export default function TeamDetailDrawer({
                 <div className="space-y-0.5">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-emerald-600" />
-                    Participation & ₹49 Payment Details (Phase 4)
+                    Participation & Confirmation Payment Details
                   </h3>
                   <p className="text-xs text-slate-500">
                     Status of team participation fee, confirmation timestamp, and leader shortlist email dispatch.
@@ -764,7 +764,7 @@ export default function TeamDetailDrawer({
                   <div className="text-xs font-black">
                     {team.paymentStatus === "PAID" ? (
                       <span className="text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Paid (₹49)
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Paid
                       </span>
                     ) : team.paymentStatus === "FAILED" ? (
                       <span className="text-rose-600 flex items-center gap-1">
@@ -772,7 +772,7 @@ export default function TeamDetailDrawer({
                       </span>
                     ) : team.status === "SHORTLISTED" ? (
                       <span className="text-amber-600 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" /> Due (₹49)
+                        <Clock className="w-3.5 h-3.5" /> Due
                       </span>
                     ) : (
                       <span className="text-slate-500">{team.paymentStatus || "NOT_REQUIRED"}</span>
@@ -832,7 +832,7 @@ export default function TeamDetailDrawer({
                   {team.status === "CONFIRMED" || team.paymentStatus === "PAID" ? (
                     <span className="font-bold text-emerald-600">Unlocked</span>
                   ) : (
-                    <span className="font-medium text-slate-400">Locked until ₹49 payment</span>
+                    <span className="font-medium text-slate-400">Locked until confirmation payment</span>
                   )}
                 </div>
               </div>

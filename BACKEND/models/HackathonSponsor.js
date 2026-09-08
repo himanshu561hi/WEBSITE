@@ -4,13 +4,13 @@ const hackathonSponsorSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: [true, 'hackathonId is required'],
       index: true,
+      trim: true,
     },
     sponsorId: {
       type: String,
       required: true,
-      unique: true,
       index: true,
     },
     name: {
@@ -82,6 +82,7 @@ const hackathonSponsorSchema = new mongoose.Schema(
   }
 );
 
+hackathonSponsorSchema.index({ hackathonId: 1, sponsorId: 1 }, { unique: true });
 hackathonSponsorSchema.index({ hackathonId: 1, active: 1, displayOrder: 1 });
 
 module.exports =

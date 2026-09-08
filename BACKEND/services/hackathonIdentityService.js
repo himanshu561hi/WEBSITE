@@ -108,8 +108,10 @@ function calculateMemberOverlap(incomingMembers = [], existingMembers = []) {
  * 4. Supporting team info (Team Name is secondary signal, NEVER standalone)
  */
 async function resolveTeamIdentity({
+  hackathonId = '',
   websiteRegistrationId = '',
   unstopTeamId = '',
+  unstopApplicationId = '',
   sourceId = '',
   source = '',
   teamName = '',
@@ -119,7 +121,7 @@ async function resolveTeamIdentity({
   incomingMembers = [],
 }) {
   let cleanWebId = cleanString(websiteRegistrationId);
-  let cleanUnstopId = cleanString(unstopTeamId);
+  let cleanUnstopId = cleanString(unstopTeamId || unstopApplicationId);
   if (!cleanWebId && (source === 'WEBSITE' || !source) && sourceId) {
     cleanWebId = cleanString(sourceId);
   }
@@ -127,6 +129,7 @@ async function resolveTeamIdentity({
     cleanUnstopId = cleanString(sourceId);
   }
 
+  const hackathonScope = hackathonId ? { hackathonId } : {};
   const effectiveLeaderEmail = leader?.email || leaderEmail || '';
   const normLeaderEmail = cleanEmail(effectiveLeaderEmail);
   const normName = normalizeTeamName(teamName);
@@ -135,6 +138,7 @@ async function resolveTeamIdentity({
   // 1. Direct Source Reference Mapping
   if (cleanUnstopId) {
     const matchedByUnstop = await HackathonTeam.findOne({
+      ...hackathonScope,
       $or: [
         { 'sourceReferences.unstopTeamIds': cleanUnstopId },
         { unstopApplicationId: cleanUnstopId },
@@ -154,6 +158,7 @@ async function resolveTeamIdentity({
 
   if (cleanWebId) {
     const matchedByWeb = await HackathonTeam.findOne({
+      ...hackathonScope,
       'sourceReferences.websiteRegistrationIds': cleanWebId,
       isDeleted: { $ne: true },
     });
@@ -175,6 +180,7 @@ async function resolveTeamIdentity({
     if (regex) orClauses.push({ 'leader.email': regex });
 
     const candidatesByLeader = await HackathonTeam.find({
+      ...hackathonScope,
       $or: orClauses,
       isDeleted: { $ne: true },
     });
@@ -217,6 +223,7 @@ async function resolveTeamIdentity({
 
   if (incomingMemberEmails.length > 0) {
     const teamsWithMemberOverlap = await HackathonTeam.find({
+      ...hackathonScope,
       $or: [
         { 'members.email': { $in: incomingMemberEmails } },
         { 'leader.email': { $in: incomingMemberEmails } },
@@ -286,6 +293,7 @@ async function resolveTeamIdentity({
   if (normName) {
     const rawName = cleanString(teamName);
     const teamsWithSameName = await HackathonTeam.find({
+      ...hackathonScope,
       $or: [
         { teamName: new RegExp(`^${rawName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
         { teamName: new RegExp(`^${normName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
@@ -331,6 +339,7 @@ async function resolveTeamIdentity({
  * Ingest / Process Incoming Team with Identity Resolution
  */
 async function processIncomingTeam({
+  hackathonId = '',
   websiteRegistrationId = '',
   unstopTeamId = '',
   sourceId = '',
@@ -355,7 +364,10 @@ async function processIncomingTeam({
     cleanUnstopId = cleanString(sourceId);
   }
 
+  const effectiveHackathonId = hackathonId || 'can-hackathon-2026';
+
   const resolution = await resolveTeamIdentity({
+    hackathonId: effectiveHackathonId,
     websiteRegistrationId: cleanWebId,
     unstopTeamId: cleanUnstopId,
     sourceId,
@@ -447,6 +459,7 @@ async function processIncomingTeam({
 
     const queueItem = await HackathonDuplicateQueue.create({
       queueId,
+      hackathonId: effectiveHackathonId,
       incomingSource: source,
       incomingSourceId: cleanWebId || cleanUnstopId || '',
       incomingRecord: {
@@ -473,6 +486,7 @@ async function processIncomingTeam({
       action: 'TEAM_DUPLICATE_QUEUED',
       targetEntity: 'HackathonDuplicateQueue',
       targetId: queueItem.queueId,
+      hackathonId: effectiveHackathonId,
       newState: queueItem.toObject(),
       reason: resolution.notes || `Ambiguous ${source} match queued for admin verification`,
     });
@@ -493,6 +507,7 @@ async function processIncomingTeam({
     const newTeamId = await generateInternalTeamId();
 
     const createdTeam = await HackathonTeam.create({
+      hackathonId: effectiveHackathonId,
       teamId: newTeamId,
       unstopApplicationId: cleanUnstopId,
       sourceReferences: {
@@ -567,23 +582,27 @@ async function processIncomingTeam({
  */
 async function resolveAdminVerification({
   queueId,
+  queueItemId,
   decision,
   targetTeamId = '',
   adminUser = {},
   notes = '',
+  adminNotes = '',
   req = null,
 }) {
+  const effectiveQueueId = queueId || queueItemId;
+  const effectiveNotes = notes || adminNotes;
   const queueItem = await HackathonDuplicateQueue.findOne({
     $or: [
-      { queueId },
-      ...(String(queueId).match(/^[0-9a-fA-F]{24}$/) ? [{ _id: queueId }] : []),
+      { queueId: effectiveQueueId },
+      ...(String(effectiveQueueId).match(/^[0-9a-fA-F]{24}$/) ? [{ _id: effectiveQueueId }] : []),
     ],
   });
   if (!queueItem) {
-    throw new Error(`Queue item ${queueId} not found`);
+    throw new Error(`Queue item ${effectiveQueueId} not found`);
   }
   if (queueItem.status !== 'PENDING') {
-    throw new Error(`Queue item ${queueId} has already been resolved as ${queueItem.status}`);
+    throw new Error(`Queue item ${effectiveQueueId} has already been resolved as ${queueItem.status}`);
   }
 
   const incoming = queueItem.incomingRecord || {};
@@ -595,12 +614,13 @@ async function resolveAdminVerification({
     }
 
     const targetTeam = await HackathonTeam.findOne({
+      ...(queueItem.hackathonId ? { hackathonId: queueItem.hackathonId } : {}),
       teamId: targetTeamId.toUpperCase(),
       isDeleted: { $ne: true },
     });
 
     if (!targetTeam) {
-      throw new Error(`Target team "${targetTeamId}" not found or deleted`);
+      throw new Error(`Target team "${targetTeamId}" not found in hackathon ${queueItem.hackathonId || ''} or deleted`);
     }
 
     const prevTeamSnapshot = targetTeam.toObject();
@@ -699,6 +719,7 @@ async function resolveAdminVerification({
     const newTeamId = await generateInternalTeamId();
 
     const createdTeam = await HackathonTeam.create({
+      hackathonId: queueItem.hackathonId || 'can-hackathon-2026',
       teamId: newTeamId,
       unstopApplicationId: incoming.unstopTeamId || '',
       sourceReferences: {
@@ -746,6 +767,7 @@ async function resolveAdminVerification({
       action: 'TEAM_KEPT_SEPARATE',
       targetEntity: 'HackathonTeam',
       targetId: createdTeam.teamId,
+      hackathonId: queueItem.hackathonId || createdTeam.hackathonId,
       newState: createdTeam.toObject(),
       reason: `Admin verified ${queueItem.incomingSourceId} as distinct; created ${createdTeam.teamId}`,
       req,

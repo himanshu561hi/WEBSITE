@@ -88,6 +88,12 @@ class EmailLoggerService {
     text = '',
     attachments = [],
     source = 'Backend API',
+    hackathonId = null,
+    eventType = null,
+    provider = 'smtp',
+    idempotencyKey = null,
+    entityId = null,
+    metadata = {},
   }) {
     try {
       if (!recipientEmail) {
@@ -121,10 +127,16 @@ class EmailLoggerService {
         text: plainText,
         attachments: parsedAttachments,
         source: source || 'Backend API',
+        hackathonId: hackathonId ? String(hackathonId).trim() : null,
+        eventType: eventType ? String(eventType).trim() : null,
+        provider: ['smtp', 'resend', 'mock', 'other'].includes(provider) ? provider : 'smtp',
+        idempotencyKey: idempotencyKey ? String(idempotencyKey).trim() : null,
+        entityId: entityId ? String(entityId).trim() : null,
+        metadata: metadata && typeof metadata === 'object' ? metadata : {},
       });
 
       await logEntry.save();
-      console.log(`[EmailLogger] ✔ Successfully logged email to DB | ID: ${logEntry._id} | Campaign: [${finalCampaign}] | Status: [${status}]`);
+      console.log(`[EmailLogger] ✔ Successfully logged email to DB | ID: ${logEntry._id} | Hackathon: [${hackathonId || 'GLOBAL'}] | Campaign: [${finalCampaign}] | Status: [${status}]`);
       return logEntry;
     } catch (error) {
       // Catch exceptions silently so email transmission never throws a secondary runtime failure

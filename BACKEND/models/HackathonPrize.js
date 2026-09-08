@@ -4,13 +4,13 @@ const hackathonPrizeSchema = new mongoose.Schema(
   {
     hackathonId: {
       type: String,
-      default: 'can-hackathon-2026',
+      required: [true, 'hackathonId is required'],
       index: true,
+      trim: true,
     },
     prizeId: {
       type: String,
       required: true,
-      unique: true,
       index: true,
     },
     name: {
@@ -86,9 +86,20 @@ const hackathonPrizeSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
+hackathonPrizeSchema.virtual('title')
+  .get(function () {
+    return this.name;
+  })
+  .set(function (val) {
+    this.name = val;
+  });
+
+hackathonPrizeSchema.index({ hackathonId: 1, prizeId: 1 }, { unique: true });
 hackathonPrizeSchema.index({ hackathonId: 1, status: 1, category: 1 });
 
 module.exports =
