@@ -182,7 +182,7 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, ha
   };
 
   const handleCommitImport = async () => {
-    if (!previewData || !previewData.previewRows) return;
+    if (!previewData || (!previewData.previewRows && !previewData.previewTeams)) return;
 
     try {
       setIsCommitting(true);
@@ -192,6 +192,7 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, ha
         hackathonId,
         importType: previewData.importType,
         rows: previewData.previewRows,
+        previewTeams: previewData.previewTeams,
         duplicateHandling,
         filename: selectedFile?.name || "unstop_export.xlsx",
       };
@@ -443,23 +444,23 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, ha
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Candidate Rows</div>
-                      <div className="text-xl font-black text-slate-800 mt-0.5">{previewData.stats.totalRows}</div>
+                      <div className="text-xl font-black text-slate-800 mt-0.5">{previewData.stats?.totalRows || 0}</div>
                     </div>
                     <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
                       <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">New Teams</div>
-                      <div className="text-xl font-black text-emerald-700 mt-0.5">{previewData.stats.newCount}</div>
+                      <div className="text-xl font-black text-emerald-700 mt-0.5">{previewData.stats?.newCount ?? previewData.stats?.newTeamsCount ?? 0}</div>
                     </div>
                     <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-center">
                       <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Existing Teams (Update)</div>
-                      <div className="text-xl font-black text-indigo-700 mt-0.5">{previewData.stats.existingUpdateCount}</div>
+                      <div className="text-xl font-black text-indigo-700 mt-0.5">{previewData.stats?.existingUpdateCount ?? previewData.stats?.updatedTeamsCount ?? previewData.stats?.duplicateCount ?? 0}</div>
                     </div>
                     <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200 text-center">
                       <div className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">New Members to Add</div>
-                      <div className="text-xl font-black text-teal-700 mt-0.5">{previewData.stats.totalNewMembers}</div>
+                      <div className="text-xl font-black text-teal-700 mt-0.5">{previewData.stats?.totalNewMembers ?? previewData.stats?.newMembersCount ?? 0}</div>
                     </div>
                     <div className="p-3.5 rounded-2xl bg-cyan-50 border border-cyan-200 text-center">
                       <div className="text-[10px] font-bold text-cyan-600 uppercase tracking-wider">Members to Update</div>
-                      <div className="text-xl font-black text-cyan-700 mt-0.5">{previewData.stats.totalUpdatedMembers}</div>
+                      <div className="text-xl font-black text-cyan-700 mt-0.5">{previewData.stats?.totalUpdatedMembers ?? previewData.stats?.updatedMembersCount ?? 0}</div>
                     </div>
                   </div>
 
@@ -467,9 +468,9 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, ha
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
                       {[
-                        { id: "ALL", label: `All Teams (${previewData.stats.totalTeams})` },
-                        { id: "NEW", label: `New Teams (${previewData.stats.newCount})` },
-                        { id: "UPDATE", label: `Existing Teams (${previewData.stats.existingUpdateCount})` },
+                        { id: "ALL", label: `All Teams (${previewData.stats?.totalTeams ?? previewData.previewTeams?.length ?? 0})` },
+                        { id: "NEW", label: `New Teams (${previewData.stats?.newCount ?? previewData.stats?.newTeamsCount ?? 0})` },
+                        { id: "UPDATE", label: `Existing Teams (${previewData.stats?.existingUpdateCount ?? previewData.stats?.updatedTeamsCount ?? previewData.stats?.duplicateCount ?? 0})` },
                       ].map((f) => (
                         <button
                           key={f.id}
@@ -881,32 +882,45 @@ export default function UnstopImportModal({ isOpen, onClose, onImportSuccess, ha
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    disabled={
+                  {(() => {
+                    const regCount =
+                      previewData.stats?.teamsToImportCount ??
+                      previewData.stats?.validToImportCount ??
+                      (previewData.stats?.newTeamsCount !== undefined
+                        ? (previewData.stats.newTeamsCount + (previewData.stats.updatedTeamsCount || 0))
+                        : (previewData.previewTeams ? previewData.previewTeams.length : 0));
+                    const pptCount = previewData.stats?.validToImportCount || 0;
+                    const generalCount = previewData.stats?.validToImportCount || (previewData.previewRows ? previewData.previewRows.length : 0);
+                    const isSaveDisabled =
                       isCommitting ||
-                      (isRegistration && (previewData.stats?.teamsToImportCount === 0 || !previewData.stats?.teamsToImportCount)) ||
-                      (isPpt && (previewData.stats?.validToImportCount === 0 || !previewData.stats?.validToImportCount)) ||
-                      (!isRegistration && !isPpt && previewData.stats?.validToImportCount === 0)
-                    }
-                    onClick={handleCommitImport}
-                    className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all cursor-pointer disabled:opacity-50 ${
-                      isRegistration
-                        ? "bg-emerald-600 hover:bg-emerald-700"
-                        : isPpt
-                        ? "bg-amber-600 hover:bg-amber-700"
-                        : "bg-indigo-600 hover:bg-indigo-700"
-                    }`}
-                  >
-                    <CheckCircle2 className={`w-4 h-4 ${isCommitting ? "animate-spin" : ""}`} />
-                    {isCommitting
-                      ? "Importing & Updating Database..."
-                      : isRegistration
-                      ? `Confirm & Save ${previewData.stats?.teamsToImportCount || 0} Teams (Master Upsert)`
-                      : isPpt
-                      ? `Confirm & Enrich ${previewData.stats?.validToImportCount || 0} Matched Teams`
-                      : `Confirm & Import ${previewData.stats?.validToImportCount || 0} Teams`}
-                  </button>
+                      (isRegistration && regCount === 0) ||
+                      (isPpt && pptCount === 0) ||
+                      (!isRegistration && !isPpt && generalCount === 0);
+
+                    return (
+                      <button
+                        type="button"
+                        disabled={isSaveDisabled}
+                        onClick={handleCommitImport}
+                        className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all cursor-pointer disabled:opacity-50 ${
+                          isRegistration
+                            ? "bg-emerald-600 hover:bg-emerald-700"
+                            : isPpt
+                            ? "bg-amber-600 hover:bg-amber-700"
+                            : "bg-indigo-600 hover:bg-indigo-700"
+                        }`}
+                      >
+                        <CheckCircle2 className={`w-4 h-4 ${isCommitting ? "animate-spin" : ""}`} />
+                        {isCommitting
+                          ? "Importing & Updating Database..."
+                          : isRegistration
+                          ? `Confirm & Save ${regCount} Teams (Master Upsert)`
+                          : isPpt
+                          ? `Confirm & Enrich ${pptCount} Matched Teams`
+                          : `Confirm & Import ${generalCount} Teams`}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
