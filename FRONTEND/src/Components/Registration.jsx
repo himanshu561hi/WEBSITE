@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatedSubmitButton } from './animations/AnimatedSubmitButton';
 
 import { countryStatesData, countriesList } from '../data/countryStates';
+import { loadRazorpay } from '../utils/loadRazorpay';
 
 const domains = [
   'Frontend Development', 'Backend Development', 'Full Stack Development',
@@ -249,6 +250,13 @@ const Registration = () => {
           }
         }
       };
+
+      const isRzpLoaded = await loadRazorpay();
+      if (!isRzpLoaded || typeof window.Razorpay === 'undefined') {
+        setSubmitting(false);
+        toast.error("Razorpay SDK failed to load. Are you online?");
+        return;
+      }
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response) {

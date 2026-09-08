@@ -61,9 +61,11 @@
       }
     </script>
 
-  <!-- Google AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7572288113952065"
-     crossorigin="anonymous"></script>
+  <!-- Google Fonts Preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
 </head>
 
 <body>
@@ -71,8 +73,18 @@
 
   <script type="module" src="/src/main.jsx"></script>
 
-  <!-- Razorpay -->
-  <script defer src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Google AdSense (Deferred after load) -->
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        var adScript = document.createElement('script');
+        adScript.async = true;
+        adScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7572288113952065";
+        adScript.crossOrigin = "anonymous";
+        document.head.appendChild(adScript);
+      }, 1000);
+    });
+  </script>
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4NCPKG9NYE"></script>

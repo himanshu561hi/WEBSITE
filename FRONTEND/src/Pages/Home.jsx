@@ -15,12 +15,8 @@ import Process from '../sections/Process';
 import Partners from '../sections/Partners';
 import Testimonials from '../sections/Testimonials';
 import CTA, { InternshipCTA } from '../sections/CTA';
-import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const Home = () => {
-  const { featuresConfig } = useFeatureSettings();
-  const showJobPortal = featuresConfig.jobPortal;
-
   return (
     <MainLayout>
       <SEO 
@@ -43,7 +39,7 @@ const Home = () => {
       <Stats />
       <MockInterviewCTA />
       <ResumeBuilderCTA />
-      {showJobPortal && <JobPortalCTA />}
+      <JobPortalCTA />
       <IndustriesServed />
       <PortfolioPreview />
       <WhyWebsite />

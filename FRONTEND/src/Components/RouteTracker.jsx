@@ -12,17 +12,25 @@ export default function RouteTracker() {
                     (localStorage.getItem('interviewUserData') ? JSON.parse(localStorage.getItem('interviewUserData')).email : null) ||
                     (localStorage.getItem('studentData') ? JSON.parse(localStorage.getItem('studentData')).email : null);
 
-      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/audit-logs/track`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'PAGE_VISIT', 
-          details: { 
-            userEmail: email,
-            path: location.pathname + location.search 
-          } 
-        })
-      }).catch(err => console.error("Tracking error", err));
+      const sendTrack = () => {
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/audit-logs/track`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            action: 'PAGE_VISIT', 
+            details: { 
+              userEmail: email,
+              path: location.pathname + location.search 
+            } 
+          })
+        }).catch(err => console.error("Tracking error", err));
+      };
+
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(sendTrack);
+      } else {
+        setTimeout(sendTrack, 1000);
+      }
     }
   }, [location.pathname, location.search]);
 

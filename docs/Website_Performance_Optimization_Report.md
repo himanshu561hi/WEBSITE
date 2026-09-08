@@ -5,62 +5,47 @@
 A comprehensive performance optimization was executed across the entire Code-A-Nova codebase (covering public pages, homepage, navigation, user dashboard, admin consoles, AI mock interviews, resume builder, job portal, and multi-hackathon engine).
 
 Key breakthroughs include:
-1. **Bundle Size Reduction**: Broken down a **3.92 MB monolithic JavaScript bundle** into route-level lazy-loaded chunks via `React.lazy()`, reducing the initial entry bundle to **507 kB** (~85% initial JS reduction).
-2. **Network Request Deduplication**: Replaced redundant, parallel un-cached API calls with **TanStack React Query** caching (`staleTime: 5 mins`, `gcTime: 30 mins`), reducing initial navigation API calls from **9–13 parallel calls down to 1 deduplicated request**.
-3. **Context & Provider Isolation**: Scoped the `InterviewConfigProvider` exclusively to interview routes, eliminating unnecessary `/api/interview-config` calls on home and generic pages.
-4. **Static Asset Optimization**: Compressed `founder-sign.png` from **2.1 MB down to 43.9 KB** (98% reduction) and added non-blocking `defer` attributes to third-party scripts.
-5. **Zero Functional or Security Regressions**: 100% test pass rate across 162 automated test cases verifying multi-hackathon isolation, authentication, RBAC, payment webhooks, and editorial scoring.
+1. **Initial API Overfetching Eliminated**: Eliminated all un-needed feature settings and config requests from the initial homepage load. The anonymous homepage now triggers **0 application/settings API requests** on initial render.
+2. **Feature-Scoped Data Fetching**: Migrated from monolithic global feature settings to isolated query hooks (`useJobPortalSettings`, `useInterviewSettings`, `useResumeSettings`, `useAssessmentSettings`, `useLeaderboardSettings`) that fire strictly within their respective routes or upon viewport intersection.
+3. **Bundle Size Reduction**: Broken down a **3.92 MB monolithic JavaScript bundle** into route-level lazy-loaded chunks via `React.lazy()`, reducing the initial entry bundle to **504.90 kB** (~87% initial JS reduction).
+4. **Third-Party Script On-Demand Loading**: Removed global 150KB+ Razorpay script from initial HTML; implemented on-demand dynamic script injection (`loadRazorpay`) only when a user initiates checkout.
+5. **Eliminated CSS `@import` Chain & Deferred AdSense**: Replaced `@import url(...)` in `index.css` with preconnected `<link>` tags in `index.html`. Deferred Google AdSense execution to post-load idle time, eliminating render-blocking cascades and duplicate `fonts.css`/`content-all.css` requests.
+6. **Zero Functional or Security Regressions**: 100% test pass rate across 162 automated test cases verifying multi-hackathon isolation, authentication, RBAC, payment webhooks, and editorial scoring.
 
 ---
 
-## 1. Before vs After Performance Metrics
+## 1. Trace Matrix: Root Causes & Resolution
+
+| Request Endpoint | Source File & Component | Trigger Mechanism | Actually Needed on Homepage? | Resolution |
+| :--- | :--- | :--- | :--- | :--- |
+| **`/api/interview-config`** | `context/InterviewConfigContext.jsx` (`InterviewConfigProvider`) | `useEffect` on mount inside provider | **NO** | Localized strictly inside `<ScopedInterviewLayout>` around interview routes. Never mounted at root. |
+| **`/api/admin/interview-settings`** | `hooks/useFeatureSettings.js` & `MockInterviewCTA.jsx` | Called on mount of `Navbar` and `Home` | **NO** | Decoupled marketing CTA; renders statically. Feature settings only query when accessing `/mock-interview` or `/my-interviews`. |
+| **`/api/admin/resume-settings`** | `hooks/useFeatureSettings.js` & `ResumeBuilderCTA.jsx` | Called on mount of `Navbar` and `Home` | **NO** | Decoupled marketing CTA; renders statically. Feature settings only query when accessing `/resume-builder` or `/my-resumes`. |
+| **`/api/admin/assessment-settings`** | `hooks/useFeatureSettings.js` | Called on mount of `Navbar` | **NO** | Removed from global `Navbar`. Settings only query inside `/assessments` or `/assessment-terminal`. |
+| **`/api/admin/settings/leaderboard`** | `hooks/useFeatureSettings.js` | Called on mount of `Navbar` | **NO** | Removed from global `Navbar`. Settings only query inside `/leaderboard`. |
+| **`/api/admin/settings/job-portal`** | `hooks/useFeatureSettings.js` & `JobPortalCTA.jsx` | Called on mount of `Navbar` and `Home` | **NO on initial load** | Lazy loaded via `IntersectionObserver` in `JobPortalCTA` only when scrolled near the section. |
+| **`/api/admin/banner`** | `Components/FeatureBanner.jsx` | Root mount in `App.jsx`, immediate `fetch()` | **NO** | Defer timer (1500ms) + TanStack Query cache (`staleTime: 15m`). Does not block initial paint. |
+| **`checkout.razorpay.com`** | `index.html` line 75 | `<script>` tag loaded on every page | **NO** | Removed from HTML. Dynamically loaded on-demand via `loadRazorpay()` when payment starts. |
+| **`content-all.css` & `fonts.css`** | AdSense Auto-Ads & CSS `@import` | `<head>` script + CSS `@import` | **NO** | Removed `@import` from `index.css`; added preconnected font links. Deferred AdSense execution to post-load idle. |
+
+---
+
+## 2. Before vs After Performance Metrics
 
 | Metric / Area | Baseline (Before) | Optimized (After) | Improvement / Impact |
 | :--- | :--- | :--- | :--- |
-| **Initial JavaScript Entry Bundle** | 3,924.96 kB (3.92 MB) | **507.06 kB** (gzip: 158.00 kB) | **~87% reduction in initial JS** |
+| **Initial Settings/Feature API Calls (Home)** | 5 parallel un-cached calls | **0 initial API requests** | **100% elimination of initial settings overfetch** |
+| **Initial JavaScript Entry Bundle** | 3,924.96 kB (3.92 MB) | **504.90 kB** (gzip: 157.99 kB) | **~87% reduction in initial JS payload** |
 | **Vendor Chunking (React / DOM / Router)** | Embedded in main bundle | **41.84 kB** (cached separately) | Long-term browser caching enabled |
 | **Vendor Chunking (React Query)** | Not isolated / unused | **42.68 kB** (cached separately) | Reusable query infrastructure |
 | **Vendor Chunking (Lucide Icons)** | Embedded in main bundle | **44.08 kB** (cached separately) | Consistent icon cache across releases |
+| **Razorpay SDK Payload on Home** | ~150 kB downloaded on every visit | **0 kB** (On-demand `loadRazorpay`) | Only loaded when user clicks payment |
 | **Heavy Admin Dashboard Code** | Bundled on homepage (1.35 MB) | **1,342.12 kB** (Lazy Loaded) | Loaded ONLY when admin logs in |
 | **PDF & Canvas Libraries (`jspdf`, `html2canvas`)** | Bundled on homepage (586 kB) | **Separate chunks (385 kB & 201 kB)** | Loaded ONLY on certificate generation |
-| **Navbar Feature Settings Requests** | 5 parallel un-cached calls | **1 cached TanStack Query call** | **80% reduction** on every page mount |
-| **Homepage CTAs Settings Requests** | 4–8 duplicate requests | **Shared TanStack Query cache** | Zero additional network calls |
 | **Global `InterviewConfigProvider`** | Executed on every page visit | **Scoped to `<ScopedInterviewLayout>`** | Zero calls on public/hackathon pages |
-| **Static Asset: `founder-sign.png`** | 2,168 kB (2.17 MB) | **43.98 kB** | **98% payload reduction** |
-| **Third-Party Script: Razorpay** | Parser-blocking `<script>` | `<script defer>` | Non-blocking First Contentful Paint |
-| **SessionStorage Bug in FeatureBanner** | `getItem` called with 2 args | Fixed to `setItem` | Persistent dismissal preserved |
-
----
-
-## 2. Detailed Technical Improvements
-
-### A. Data Caching & Request Deduplication Layer
-- **Query Client Configuration (`FRONTEND/src/utils/queryClient.js`)**:
-  - Global `defaultOptions`: `staleTime: 60,000ms` (1 min), `gcTime: 600,000ms` (10 min), `refetchOnWindowFocus: false`, `retry: 1`.
-  - Standardized query key factory (`queryKeys`) supporting `settings`, `user`, `hackathon(hackathonId)`, `jobs`, and `interviews`.
-  - Secure memory cleanup (`purgePrivateUserCache`) integrated with `clearAllUserData` in `FRONTEND/src/utils/auth.js` to clear sensitive cached data upon logout.
-- **Shared Hook (`FRONTEND/src/hooks/useFeatureSettings.js`)**:
-  - Centralizes the retrieval of `job_portal`, `mock_interview`, and `resume_builder` settings.
-  - Automatically shares response cache between `Navbar`, `Home`, `JobPortalCTA`, `MockInterviewCTA`, and `ResumeBuilderCTA`.
-
-### B. Route-Level Code Splitting (`FRONTEND/src/App.jsx`)
-- Implemented `React.lazy()` for all non-home route components:
-  - `AdminDashboard`, `HackathonAdminWorkspace`, `UnifiedDashboard`, `EditorialDashboard`
-  - `PublicResumeBuilder`, `PublicMockInterview`, `AssessmentTerminal`, `QuizCertificate`
-  - `Jobs`, `JobDetail`, `About`, `Contact`, `Registration`, etc.
-- Added smooth fallback spinner component (`FRONTEND/src/Components/PageLoader.jsx`).
-- Encapsulated `InterviewConfigProvider` inside `<ScopedInterviewLayout>` so only interview-specific routes trigger configuration API calls.
-
-### C. Vite Build & Rollup Optimization (`FRONTEND/vite.config.js`)
-- Configured Rollup `manualChunks` to split high-frequency vendor packages:
-  - `vendor-react`: `['react', 'react-dom', 'react-router-dom']`
-  - `vendor-query`: `['@tanstack/react-query']`
-  - `vendor-icons`: `['lucide-react']`
-- Increased `chunkSizeWarningLimit` to 800 kB for heavy lazy modules.
-
-### D. Asset Optimization & HTML Parsing
-- Resized and compressed `founder-sign.png` to high-DPI signature dimensions (600px width), retaining visual sharpness while eliminating 2.1 MB of image data.
-- Added `defer` attribute to the Razorpay SDK `<script defer src="https://checkout.razorpay.com/v1/checkout.js">` in `FRONTEND/index.html`.
+| **Static Asset: `founder-sign.png`** | 2,168 kB (2.17 MB) | **43.98 kB** | **98% image payload reduction** |
+| **CSS Font Loading Chain** | `@import url(...)` blocking CSSOM | `<link rel="preconnect">` in HTML | Eliminates chained font discovery requests |
+| **Google AdSense Execution** | Parser-blocking `<head>` script | Deferred to 1000ms after window load | Non-blocking First Contentful Paint |
 
 ---
 

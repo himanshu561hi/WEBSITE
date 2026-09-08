@@ -88,11 +88,19 @@ function App() {
                     (localStorage.getItem('interviewUserData') ? JSON.parse(localStorage.getItem('interviewUserData')).email : null) ||
                     (localStorage.getItem('studentData') ? JSON.parse(localStorage.getItem('studentData')).email : null);
 
-      fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/audit-logs/track`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'NEW_VISITOR', details: { userEmail: email } })
-      }).catch(err => console.error("Tracking error", err));
+      const sendNewVisitor = () => {
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/audit-logs/track`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'NEW_VISITOR', details: { userEmail: email } })
+        }).catch(err => console.error("Tracking error", err));
+      };
+
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(sendNewVisitor);
+      } else {
+        setTimeout(sendNewVisitor, 1500);
+      }
       sessionStorage.setItem('site_visited', 'true');
     }
   }, []);

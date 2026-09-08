@@ -45,6 +45,7 @@ import {
   Gift,
 } from "lucide-react";
 import SEO from "../../Components/SEO";
+import { loadRazorpay } from "../../utils/loadRazorpay";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5006";
 
@@ -519,7 +520,8 @@ export default function HackathonPortal() {
         throw new Error("Unable to obtain payment order from gateway. Please try again.");
       }
 
-      if (typeof window.Razorpay === "undefined") {
+      const isRzpLoaded = await loadRazorpay();
+      if (!isRzpLoaded || typeof window.Razorpay === "undefined") {
         throw new Error("Razorpay SDK is not loaded. Please verify your connection and try again.");
       }
 

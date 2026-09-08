@@ -1,14 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, ArrowRight, Zap, CheckCircle, Search, Gift, TrendingUp, Sparkles, ShieldCheck } from 'lucide-react';
-import { useFeatureSettings } from '../hooks/useFeatureSettings';
+import { useJobPortalSettings } from '../hooks/useFeatureSettings';
 
 const JobPortalCTA = () => {
   const navigate = useNavigate();
-  const { featuresConfig, jobPortalDetails } = useFeatureSettings();
-  const isEnabled = featuresConfig.jobPortal;
-  const isFreePromo = jobPortalDetails.jobPortalFreeMode;
-  const premiumPrice = jobPortalDetails.jobPortalPremiumPrice;
+  const sectionRef = useRef(null);
+  const [isInViewport, setIsInViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsInViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const { data } = useJobPortalSettings({ enabled: isInViewport });
+  const isEnabled = data?.enabled ?? true;
+  const isFreePromo = data?.freeMode ?? false;
+  const premiumPrice = data?.premiumPrice ?? 199;
 
   const handleCTA = () => {
     const token = localStorage.getItem('studentToken') || localStorage.getItem('interviewToken');
@@ -29,7 +55,7 @@ const JobPortalCTA = () => {
   const perJobCost = (premiumPrice / totalOpportunities).toFixed(2);
 
   return (
-    <section className="relative py-24 overflow-hidden bg-gradient-to-b from-white via-indigo-50/30 to-slate-50 font-sans">
+    <section ref={sectionRef} className="relative py-24 overflow-hidden bg-gradient-to-b from-white via-indigo-50/30 to-slate-50 font-sans">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         
         {/* Top Celebration Promo Banner (When Free Mode is Active) */}

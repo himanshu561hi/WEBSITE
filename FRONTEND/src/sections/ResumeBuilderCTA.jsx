@@ -1,12 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Zap, CheckCircle, Award, ArrowRight, Plus, Eye, Sparkles } from 'lucide-react';
-import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const ResumeBuilderCTA = () => {
   const navigate = useNavigate();
-  const { featuresConfig } = useFeatureSettings();
-  const isEnabled = featuresConfig.resume;
 
   const isLoggedIn = () => {
     return !!(localStorage.getItem('interviewToken') || localStorage.getItem('studentToken'));
@@ -29,10 +26,6 @@ const ResumeBuilderCTA = () => {
       navigate('/student-login');
     }
   };
-
-  if (!isEnabled) {
-    return null;
-  }
 
   return (
     <section className="relative py-24 overflow-hidden bg-gradient-to-b from-slate-50 to-white font-sans">

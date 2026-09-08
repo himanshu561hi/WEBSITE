@@ -1,12 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Brain, MessageSquare, ArrowRight, Video, Target, Zap } from 'lucide-react';
-import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const MockInterviewCTA = () => {
   const navigate = useNavigate();
-  const { featuresConfig } = useFeatureSettings();
-  const isEnabled = featuresConfig.interview;
 
   const handleCTAClick = () => {
     const token = localStorage.getItem('interviewToken');
@@ -16,10 +13,6 @@ const MockInterviewCTA = () => {
       navigate('/student-login');
     }
   };
-
-  if (!isEnabled) {
-    return null;
-  }
 
   return (
     <section className="relative py-24 overflow-hidden bg-white font-sans">

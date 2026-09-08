@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, ExternalLink } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { queryKeys } from '../utils/queryClient';
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL;
 
@@ -11,14 +14,10 @@ const isVideo = (url) => {
 
 const FeatureBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [bannerInfo, setBannerInfo] = useState({
-    mediaUrl: null,
-    targetUrl: '',
-    buttonText: 'Click Here',
-  });
+  const [shouldFetch, setShouldFetch] = useState(false);
 
   useEffect(() => {
-    // Hide banner if user is referred, so they don't get distracted by the ambassador popup
+    // Check referral & dismissed state before enabling query
     const params = new URLSearchParams(window.location.search);
     const hasRef = params.get("ref") || params.get("referralCode") || params.get("referredByCode");
     const hasStoredRef = sessionStorage.getItem("referralCode") || localStorage.getItem("referralCode");
@@ -27,20 +26,37 @@ const FeatureBanner = () => {
     const dismissed = sessionStorage.getItem('featureBannerDismissed');
     if (dismissed) return;
 
-    fetch(`${BACKEND}/api/admin/banner`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.success && data.banner?.enabled && data.banner?.imageUrl) {
-          setBannerInfo({
-            mediaUrl: data.banner.imageUrl,
-            targetUrl: data.banner.targetUrl || '',
-            buttonText: data.banner.buttonText || 'Click Here',
-          });
-          setTimeout(() => setIsVisible(true), 600);
-        }
-      })
-      .catch(() => {});
+    // Defer banner fetch until after initial critical render completes (1.5s delay)
+    const timer = setTimeout(() => {
+      setShouldFetch(true);
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, []);
+
+  const { data } = useQuery({
+    queryKey: queryKeys.settings.banner,
+    queryFn: async () => {
+      const res = await axios.get(`${BACKEND}/api/admin/banner`);
+      return res.data;
+    },
+    enabled: shouldFetch,
+    staleTime: 15 * 60 * 1000, // 15 minutes cache
+    gcTime: 30 * 60 * 1000,
+  });
+
+  const bannerInfo = {
+    mediaUrl: data?.success && data?.banner?.enabled ? data.banner.imageUrl : null,
+    targetUrl: data?.banner?.targetUrl || '',
+    buttonText: data?.banner?.buttonText || 'Click Here',
+  };
+
+  useEffect(() => {
+    if (bannerInfo.mediaUrl) {
+      const showTimer = setTimeout(() => setIsVisible(true), 300);
+      return () => clearTimeout(showTimer);
+    }
+  }, [bannerInfo.mediaUrl]);
 
   const handleClose = () => {
     sessionStorage.setItem('featureBannerDismissed', 'true');
