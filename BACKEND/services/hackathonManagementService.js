@@ -322,7 +322,9 @@ class HackathonManagementService {
     const query = {
       isDeleted: { $ne: true },
       $or: [
+        { hackathonId: clean },
         { hackathonId: clean.toUpperCase() },
+        { hackathonId: clean.toLowerCase() },
         { slug: clean.toLowerCase() },
       ],
     };
@@ -568,6 +570,37 @@ class HackathonManagementService {
 
   static async archiveHackathon(idOrSlug, adminUser = null, req = null) {
     return this.transitionStatus(idOrSlug, 'ARCHIVED', adminUser, 'Admin ARCHIVED hackathon', req);
+  }
+
+  static async deleteHackathon(idOrSlug, adminUser = null, req = null) {
+    const hackathon = await this.getHackathonByIdOrSlug(idOrSlug);
+    if (!hackathon) {
+      throw new Error(`Hackathon "${idOrSlug}" not found.`);
+    }
+
+    if (hackathon.status === 'ACTIVE') {
+      throw new Error('Cannot delete an ACTIVE hackathon. Please mark it as Draft or Completed first.');
+    }
+
+    // Soft delete
+    hackathon.isDeleted = true;
+    await hackathon.save();
+
+    await HackathonAuditLog.log({
+      actorId: String(adminUser?._id || adminUser?.id || 'admin'),
+      actorName: adminUser?.name || adminUser?.username || 'Admin User',
+      actorEmail: adminUser?.email || '',
+      role: 'admin',
+      action: 'DELETE_HACKATHON',
+      targetEntity: 'Hackathon',
+      targetId: hackathon.hackathonId,
+      hackathonId: hackathon.hackathonId,
+      newState: { isDeleted: true, status: hackathon.status },
+      reason: `Admin deleted hackathon: "${hackathon.name}" (${hackathon.hackathonId})`,
+      req,
+    });
+
+    return { success: true, message: `Hackathon "${hackathon.name}" deleted successfully.` };
   }
 }
 

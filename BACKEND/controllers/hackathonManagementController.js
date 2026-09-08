@@ -233,3 +233,25 @@ exports.checkSlugAvailability = async (req, res) => {
     });
   }
 };
+
+/**
+ * 10. Delete Hackathon (Soft Delete)
+ * DELETE /api/hackathons/:hackathonId
+ */
+exports.deleteHackathon = async (req, res) => {
+  try {
+    const { hackathonId } = req.params;
+    const result = await HackathonManagementService.deleteHackathon(
+      hackathonId,
+      req.user,
+      req
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('deleteHackathon Error:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to delete hackathon.',
+    });
+  }
+};

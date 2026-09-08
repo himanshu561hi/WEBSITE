@@ -13,6 +13,7 @@ const {
   completeHackathon,
   archiveHackathon,
   checkSlugAvailability,
+  deleteHackathon,
 } = require('../controllers/hackathonManagementController');
 
 /**
@@ -27,9 +28,10 @@ router.post('/', auth, verifyAdmin, createHackathon);
 // Slug Availability Check
 router.get('/check-slug/:slug', auth, verifyAdmin, checkSlugAvailability);
 
-// Single Hackathon Read & Update
+// Single Hackathon Read, Update & Delete
 router.get('/:hackathonId', auth, verifyAdmin, getHackathonById);
 router.patch('/:hackathonId', auth, verifyAdmin, updateHackathon);
+router.delete('/:hackathonId', auth, verifyAdmin, deleteHackathon);
 
 // Lifecycle Transition Endpoints
 router.post('/:hackathonId/upcoming', auth, verifyAdmin, markUpcomingHackathon);
