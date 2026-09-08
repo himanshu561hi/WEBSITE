@@ -1,37 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { Briefcase, MapPin, ArrowRight, Zap, CheckCircle, Search, Gift, TrendingUp, Sparkles, ShieldCheck } from 'lucide-react';
+import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const JobPortalCTA = () => {
   const navigate = useNavigate();
-  const [isEnabled, setIsEnabled] = useState(true);
-  const [isFreePromo, setIsFreePromo] = useState(false);
-  const [premiumPrice, setPremiumPrice] = useState(199);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/admin/settings/job-portal`);
-        if (res.data) {
-          if (res.data.jobPortalEnabled !== undefined) {
-            setIsEnabled(Boolean(res.data.jobPortalEnabled));
-          } else if (res.data.enabled !== undefined) {
-            setIsEnabled(Boolean(res.data.enabled));
-          }
-          if (res.data.jobPortalFreeMode !== undefined) {
-            setIsFreePromo(Boolean(res.data.jobPortalFreeMode));
-          }
-          if (res.data.jobPortalPremiumPrice !== undefined) {
-            setPremiumPrice(Number(res.data.jobPortalPremiumPrice) || 199);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch job portal settings for home banner:", error);
-      }
-    };
-    fetchSettings();
-  }, []);
+  const { featuresConfig, jobPortalDetails } = useFeatureSettings();
+  const isEnabled = featuresConfig.jobPortal;
+  const isFreePromo = jobPortalDetails.jobPortalFreeMode;
+  const premiumPrice = jobPortalDetails.jobPortalPremiumPrice;
 
   const handleCTA = () => {
     const token = localStorage.getItem('studentToken') || localStorage.getItem('interviewToken');

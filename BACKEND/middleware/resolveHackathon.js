@@ -162,19 +162,11 @@ const resolveHackathonContext = (options = {}) => {
         contextSource = 'HEADER_ID';
 
         if (!resolvedHackathon) {
-          if (defaultToActive) {
-            resolvedHackathon = await findActiveHackathon();
-            if (resolvedHackathon) {
-              contextSource = 'ACTIVE_FALLBACK';
-            }
-          }
-          if (!resolvedHackathon) {
-            return res.status(404).json({
-              success: false,
-              code: ERROR_CODES.HACKATHON_NOT_FOUND,
-              message: `Hackathon specified in x-hackathon-id header ("${headerId}") was not found.`,
-            });
-          }
+          return res.status(404).json({
+            success: false,
+            code: ERROR_CODES.HACKATHON_NOT_FOUND,
+            message: `Hackathon specified in x-hackathon-id header ("${headerId}") was not found.`,
+          });
         }
       }
 

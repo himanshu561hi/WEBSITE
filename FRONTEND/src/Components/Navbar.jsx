@@ -5,16 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 
+import { useFeatureSettings } from '../hooks/useFeatureSettings';
+
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [featuresDropdownOpen, setFeaturesDropdownOpen] = useState(false);
   const [mobileFeaturesOpen, setMobileFeaturesOpen] = useState(false);
-  const [featuresConfig, setFeaturesConfig] = useState({ jobPortal: true, interview: true, resume: true, assessment: true });
   const location = useLocation();
+
+  const { featuresConfig, showLeaderboard } = useFeatureSettings();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,41 +24,6 @@ const Navbar = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const fetchSetting = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/settings/leaderboard`);
-        setShowLeaderboard(res.data.showLeaderboard);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchSetting();
-  }, []);
-
-
-  useEffect(() => {
-    const fetchFeatureSettings = async () => {
-      try {
-        const [jobRes, intRes, resRes, assmtRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/settings/job-portal`).catch(() => ({ data: { jobPortalEnabled: true } })),
-          axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/interview-settings`).catch(() => ({ data: { enabled: true } })),
-          axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/resume-settings`).catch(() => ({ data: { enabled: true } })),
-          axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/assessment-settings`).catch(() => ({ data: { enabled: true } }))
-        ]);
-        setFeaturesConfig({
-          jobPortal: jobRes.data?.jobPortalEnabled ?? true,
-          interview: intRes.data?.enabled ?? true,
-          resume: resRes.data?.enabled ?? true,
-          assessment: assmtRes.data?.enabled ?? true,
-        });
-      } catch (err) {
-        console.error('Failed to fetch feature settings', err);
-      }
-    };
-    fetchFeatureSettings();
   }, []);
 
   const navLinks = [

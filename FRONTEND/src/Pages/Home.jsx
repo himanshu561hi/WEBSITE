@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React from 'react';
 import SEO from '../Components/SEO';
 import MainLayout from '../layouts/MainLayout';
 import Hero from '../sections/Hero';
@@ -16,21 +15,11 @@ import Process from '../sections/Process';
 import Partners from '../sections/Partners';
 import Testimonials from '../sections/Testimonials';
 import CTA, { InternshipCTA } from '../sections/CTA';
+import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const Home = () => {
-  const [showJobPortal, setShowJobPortal] = useState(true);
-
-  useEffect(() => {
-    const fetchSetting = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/settings/job-portal`);
-        setShowJobPortal(res.data.jobPortalEnabled);
-      } catch (error) {
-        console.error('Failed to fetch job portal setting', error);
-      }
-    };
-    fetchSetting();
-  }, []);
+  const { featuresConfig } = useFeatureSettings();
+  const showJobPortal = featuresConfig.jobPortal;
 
   return (
     <MainLayout>

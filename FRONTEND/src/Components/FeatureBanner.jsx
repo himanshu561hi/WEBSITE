@@ -43,7 +43,7 @@ const FeatureBanner = () => {
   }, []);
 
   const handleClose = () => {
-    sessionStorage.getItem('featureBannerDismissed', 'true');
+    sessionStorage.setItem('featureBannerDismissed', 'true');
     setIsVisible(false);
   };
 

@@ -1,5 +1,7 @@
+import { purgePrivateUserCache } from './queryClient';
+
 /**
- * Clears ALL user-related data from localStorage and sessionStorage.
+ * Clears ALL user-related data from localStorage, sessionStorage, and memory cache.
  * Call this on every logout, regardless of user type.
  */
 export const clearAllUserData = () => {
@@ -17,4 +19,11 @@ export const clearAllUserData = () => {
 
   // ── sessionStorage keys (banners, caches, temp data) ──────────────────────
   sessionStorage.clear();
+
+  // ── Purge private user cache from memory (TanStack Query) ─────────────────
+  try {
+    purgePrivateUserCache();
+  } catch (e) {
+    // Ignore if called before queryClient init
+  }
 };

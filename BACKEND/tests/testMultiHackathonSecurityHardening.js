@@ -11,6 +11,7 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 require('dotenv').config({ path: '.env' });
 
 const Hackathon = require('../models/Hackathon');

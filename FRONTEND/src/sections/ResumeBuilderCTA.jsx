@@ -1,25 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { FileText, Zap, CheckCircle, Award, ArrowRight, Plus, Eye, Sparkles } from 'lucide-react';
+import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const ResumeBuilderCTA = () => {
   const navigate = useNavigate();
-  const [isEnabled, setIsEnabled] = useState(true);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/admin/resume-settings`);
-        if (res.data.success && res.data.enabled !== undefined) {
-          setIsEnabled(res.data.enabled);
-        }
-      } catch (error) {
-        console.error("Failed to fetch resume settings", error);
-      }
-    };
-    fetchSettings();
-  }, []);
+  const { featuresConfig } = useFeatureSettings();
+  const isEnabled = featuresConfig.resume;
 
   const isLoggedIn = () => {
     return !!(localStorage.getItem('interviewToken') || localStorage.getItem('studentToken'));

@@ -1,25 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { Mic, Brain, MessageSquare, ArrowRight, Video, Target, Zap } from 'lucide-react';
+import { useFeatureSettings } from '../hooks/useFeatureSettings';
 
 const MockInterviewCTA = () => {
   const navigate = useNavigate();
-  const [isEnabled, setIsEnabled] = useState(true);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006'}/api/admin/interview-settings`);
-        if (res.data.success && res.data.enabled !== undefined) {
-          setIsEnabled(res.data.enabled);
-        }
-      } catch (error) {
-        console.error("Failed to fetch interview settings", error);
-      }
-    };
-    fetchSettings();
-  }, []);
+  const { featuresConfig } = useFeatureSettings();
+  const isEnabled = featuresConfig.interview;
 
   const handleCTAClick = () => {
     const token = localStorage.getItem('interviewToken');
