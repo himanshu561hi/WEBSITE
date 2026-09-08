@@ -72,9 +72,9 @@ const UnifiedLayout = () => (
   </MainLayout>
 );
 
-const ScopedInterviewLayout = () => (
+const ScopedInterviewLayout = ({ children }) => (
   <InterviewConfigProvider>
-    <Outlet />
+    {children || <Outlet />}
   </InterviewConfigProvider>
 );
 
@@ -189,7 +189,7 @@ function App() {
 
           {/* Admin Pages (No site navbar/footer — they have their own header) */}
           <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/admin-dashboard" element={<ScopedInterviewLayout><AdminDashboard /></ScopedInterviewLayout>} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
 
           {/* Assessment Terminal (Phase 9) full screen */}
           <Route path="/assessment-terminal/:sessionId" element={<AssessmentTerminal />} />
