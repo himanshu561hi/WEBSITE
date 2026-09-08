@@ -42,6 +42,8 @@ exports.getHackathons = async (req, res) => {
     res.status(200).json({
       success: true,
       ...result,
+      hackathons: result.items,
+      data: result.items,
     });
   } catch (error) {
     console.error('getHackathons Error:', error);

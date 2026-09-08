@@ -1417,19 +1417,39 @@ export default function HackathonAdminWorkspace() {
   const fetchAvailableHackathons = async () => {
     try {
       const token = getAdminToken();
-      const res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/hackathons`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        setAvailableHackathons(res.data.data);
+      let res;
+      try {
+        res = await axios.get(`${BACKEND_URL}/api/hackathons`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        res = await axios.get(`${BACKEND_URL}/api/hackathon/admin/hackathons`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      const list = Array.isArray(res?.data?.items)
+        ? res.data.items
+        : Array.isArray(res?.data?.hackathons)
+        ? res.data.hackathons
+        : Array.isArray(res?.data?.data)
+        ? res.data.data
+        : [];
+
+      if (list.length > 0) {
+        setAvailableHackathons(list);
         setSelectedHackathonId((currentId) => {
-          if (currentId && res.data.data.some((h) => h.hackathonId === currentId)) {
+          if (currentId && list.some((h) => h.hackathonId === currentId)) {
             return currentId;
           }
-          const active = res.data.data.find((h) => h.status === "ACTIVE") || res.data.data[0];
+          const active = list.find((h) => h.status === "ACTIVE") || list[0];
           const chosenId = active ? active.hackathonId : "";
           if (chosenId) {
             localStorage.setItem("adminSelectedHackathonId", chosenId);
+            if (!currentId) {
+              fetchOverview(chosenId);
+              fetchTeams(1, null, chosenId);
+            }
           }
           return chosenId;
         });
@@ -1718,7 +1738,9 @@ export default function HackathonAdminWorkspace() {
                   className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer pr-1"
                 >
                   {availableHackathons.length === 0 && (
-                    <option value="" className="bg-slate-900 text-white">Loading...</option>
+                    <option value={selectedHackathonId || ""} className="bg-slate-900 text-white">
+                      {selectedHackathonId ? `${selectedHackathonId}` : "Loading..."}
+                    </option>
                   )}
                   {availableHackathons.map((h) => (
                     <option key={h.hackathonId} value={h.hackathonId} className="bg-slate-900 text-white">
