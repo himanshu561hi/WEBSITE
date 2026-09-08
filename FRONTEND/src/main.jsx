@@ -20,6 +20,14 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
+// Automatically reload the page when a new deployment hash mismatch occurs on dynamic import
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    console.warn('New deployment detected. Refreshing application...');
+    window.location.reload();
+  });
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
