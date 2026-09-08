@@ -59,6 +59,7 @@ import {
   GitMerge,
   BarChart3,
   TrendingUp,
+  ArrowRight,
 } from "lucide-react";
 import UnstopImportModal from "./UnstopImportModal";
 import TeamDetailDrawer from "./TeamDetailDrawer";
