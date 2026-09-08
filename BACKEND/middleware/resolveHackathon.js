@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Hackathon = require('../models/Hackathon');
+const HackathonSetting = require('../models/HackathonSetting');
 
 // Standardized Error Codes for Hackathon Context
 const ERROR_CODES = {
@@ -65,19 +66,26 @@ async function findBySlug(slug) {
 }
 
 /**
- * Helper: Find hackathon by canonical ID (e.g. CAN-HACK-000001 or legacy can-hackathon-2026)
+ * Helper: Find hackathon by canonical ID (e.g. CAN-HACK-000001 or legacy can-hackathon-2026), slug, or _id
  */
 async function findById(hackathonId) {
   if (!hackathonId || typeof hackathonId !== 'string') return null;
   const cleanId = hackathonId.trim();
+  if (!cleanId || cleanId === 'null' || cleanId === 'undefined') return null;
 
-  // Search by exact canonical ID, uppercase ID, or legacy lowercase ID
+  const conditions = [
+    { hackathonId: cleanId },
+    { hackathonId: cleanId.toUpperCase() },
+    { hackathonId: cleanId.toLowerCase() },
+    { slug: cleanId.toLowerCase() },
+  ];
+
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    conditions.push({ _id: new mongoose.Types.ObjectId(cleanId) });
+  }
+
   return await Hackathon.findOne({
-    $or: [
-      { hackathonId: cleanId },
-      { hackathonId: cleanId.toUpperCase() },
-      { hackathonId: cleanId.toLowerCase() },
-    ],
+    $or: conditions,
     isDeleted: { $ne: true },
   }).populate('settingsRef');
 }
@@ -148,18 +156,25 @@ const resolveHackathonContext = (options = {}) => {
       }
 
       // Priority B: Explicit API Header (x-hackathon-id)
-      if (!resolvedHackathon && req.headers['x-hackathon-id']) {
+      if (!resolvedHackathon && req.headers['x-hackathon-id'] && req.headers['x-hackathon-id'] !== 'null' && req.headers['x-hackathon-id'] !== 'undefined') {
         const headerId = req.headers['x-hackathon-id'];
         resolvedHackathon = await findById(headerId);
         contextSource = 'HEADER_ID';
 
         if (!resolvedHackathon) {
-          // STRICT RULE: Do NOT fall back to 2026 or active on invalid header!
-          return res.status(404).json({
-            success: false,
-            code: ERROR_CODES.HACKATHON_NOT_FOUND,
-            message: `Hackathon specified in x-hackathon-id header ("${headerId}") was not found.`,
-          });
+          if (defaultToActive) {
+            resolvedHackathon = await findActiveHackathon();
+            if (resolvedHackathon) {
+              contextSource = 'ACTIVE_FALLBACK';
+            }
+          }
+          if (!resolvedHackathon) {
+            return res.status(404).json({
+              success: false,
+              code: ERROR_CODES.HACKATHON_NOT_FOUND,
+              message: `Hackathon specified in x-hackathon-id header ("${headerId}") was not found.`,
+            });
+          }
         }
       }
 

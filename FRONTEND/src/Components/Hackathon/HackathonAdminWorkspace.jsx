@@ -1443,10 +1443,10 @@ export default function HackathonAdminWorkspace() {
             return currentId;
           }
           const active = list.find((h) => h.status === "ACTIVE") || list[0];
-          const chosenId = active ? active.hackathonId : "";
+          const chosenId = active ? active.hackathonId : (list[0]?.hackathonId || "");
           if (chosenId) {
             localStorage.setItem("adminSelectedHackathonId", chosenId);
-            if (!currentId) {
+            if (currentId !== chosenId) {
               fetchOverview(chosenId);
               fetchTeams(1, null, chosenId);
             }
