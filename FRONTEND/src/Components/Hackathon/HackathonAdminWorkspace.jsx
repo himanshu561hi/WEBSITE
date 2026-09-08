@@ -1476,7 +1476,16 @@ export default function HackathonAdminWorkspace() {
     setEvaluations([]);
     setAggregatedResults([]);
     setResults([]);
-    setResultsSummary(null);
+    setResultsSummary({
+      total: 0,
+      eligible: 0,
+      pending: 0,
+      ineligible: 0,
+      ties: 0,
+      approved: 0,
+      published: 0,
+      locked: 0,
+    });
     setCertificates([]);
     setCertificatesTotal(0);
     setPrizes([]);
@@ -1854,7 +1863,7 @@ export default function HackathonAdminWorkspace() {
               badge: stats.finalSubmissions > 0 ? `${stats.finalSubmissions} Submissions` : "Active",
             },
             { id: "judging", label: "Judging & Evaluations", icon: Sparkles, badge: aggregatedResults.length > 0 ? `${aggregatedResults.length} Evaluated` : "Active" },
-            { id: "results", label: "Results", icon: Trophy, badge: resultsSummary.total > 0 ? `${resultsSummary.total} Ranked` : "Official" },
+            { id: "results", label: "Results", icon: Trophy, badge: (resultsSummary?.total || 0) > 0 ? `${resultsSummary.total} Ranked` : "Official" },
             { id: "certificates", label: "Certificates", icon: CheckCircle2, badge: certificatesTotal > 0 ? `${certificatesTotal} Issued` : "Active" },
             { id: "prizes", label: "Prizes & Fulfillment", icon: Medal, badge: prizeFulfillments.length > 0 ? `${prizeFulfillments.length} Pipeline` : "Active" },
             { id: "sponsors", label: "Sponsors", icon: Sparkles, badge: sponsors.length > 0 ? `${sponsors.length} Partners` : "Active" },
@@ -5160,7 +5169,7 @@ export default function HackathonAdminWorkspace() {
                   {calculatingResults ? "Calculating..." : results.length > 0 ? "Recalculate Results" : "Calculate Results"}
                 </button>
 
-                {resultsSummary.ties > 0 && (
+                {(resultsSummary?.ties || 0) > 0 && (
                   <button
                     type="button"
                     onClick={handleOpenTieModal}
@@ -5168,7 +5177,7 @@ export default function HackathonAdminWorkspace() {
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
                   >
                     <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                    Resolve Ties ({resultsSummary.ties})
+                    Resolve Ties ({resultsSummary?.ties || 0})
                   </button>
                 )}
 
@@ -5176,9 +5185,9 @@ export default function HackathonAdminWorkspace() {
                   <button
                     type="button"
                     onClick={() => setShowApproveResultsModal(true)}
-                    disabled={results.length === 0 || resultsSummary.ties > 0}
+                    disabled={results.length === 0 || (resultsSummary?.ties || 0) > 0}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-colors cursor-pointer disabled:opacity-50"
-                    title={resultsSummary.ties > 0 ? "Resolve ties before approval" : "Approve calculated rankings"}
+                    title={(resultsSummary?.ties || 0) > 0 ? "Resolve ties before approval" : "Approve calculated rankings"}
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     Approve Results
@@ -5234,31 +5243,31 @@ export default function HackathonAdminWorkspace() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Total Considered
                 </span>
-                <span className="text-xl font-black text-slate-900">{resultsSummary.total || 0}</span>
+                <span className="text-xl font-black text-slate-900">{resultsSummary?.total || 0}</span>
               </div>
               <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
                   Eligible & Ranked
                 </span>
-                <span className="text-xl font-black text-emerald-700">{resultsSummary.eligible || 0}</span>
+                <span className="text-xl font-black text-emerald-700">{resultsSummary?.eligible || 0}</span>
               </div>
               <div className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
                   Pending Judging
                 </span>
-                <span className="text-xl font-black text-amber-700">{resultsSummary.pending || 0}</span>
+                <span className="text-xl font-black text-amber-700">{resultsSummary?.pending || 0}</span>
               </div>
               <div className="p-3.5 rounded-xl bg-rose-50/50 border border-rose-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
                   Ineligible Teams
                 </span>
-                <span className="text-xl font-black text-rose-700">{resultsSummary.ineligible || 0}</span>
+                <span className="text-xl font-black text-rose-700">{resultsSummary?.ineligible || 0}</span>
               </div>
               <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 block">
                   Ties Detected
                 </span>
-                <span className="text-xl font-black text-purple-700">{resultsSummary.ties || 0}</span>
+                <span className="text-xl font-black text-purple-700">{resultsSummary?.ties || 0}</span>
               </div>
               <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
@@ -5273,7 +5282,7 @@ export default function HackathonAdminWorkspace() {
                     <>
                       <Globe className="w-3 h-3 text-emerald-600" /> PUBLISHED
                     </>
-                  ) : resultsSummary.approved > 0 ? (
+                  ) : (resultsSummary?.approved || 0) > 0 ? (
                     <>
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" /> APPROVED
                     </>
