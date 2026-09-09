@@ -23,6 +23,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
 // Automatically reload the page when a new deployment hash mismatch occurs on dynamic import
 if (typeof window !== 'undefined') {
   window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault();
     console.warn('New deployment detected. Refreshing application...');
     window.location.reload();
   });

@@ -1,4 +1,4 @@
-import { useEffect, Suspense, lazy } from "react";
+import React, { useEffect, Suspense, lazy, Component } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,6 +7,47 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
+
+class ChunkErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error) {
+    const isChunkLoadFailed =
+      error?.name === 'ChunkLoadError' ||
+      /Failed to fetch dynamically imported module/i.test(error?.message || '') ||
+      /Loading chunk/i.test(error?.message || '') ||
+      /MIME type of "text\/html"/i.test(error?.message || '');
+    if (isChunkLoadFailed) {
+      const refreshed = sessionStorage.getItem('chunk_reload');
+      if (!refreshed) {
+        sessionStorage.setItem('chunk_reload', 'true');
+        window.location.reload();
+      }
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#fff', backgroundColor: '#0b0f19', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem', fontWeight: 600 }}>Updating Application</h2>
+          <p style={{ opacity: 0.8, marginBottom: '1.5rem', maxWidth: '400px', lineHeight: 1.5 }}>A new version of Code-A-Nova was deployed. Please refresh to continue.</p>
+          <button 
+            onClick={() => { sessionStorage.removeItem('chunk_reload'); window.location.reload(); }}
+            style={{ padding: '0.75rem 1.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}
+          >
+            Refresh Now
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Immediate static imports for critical home & layout elements
 import Home from "./Pages/Home";
@@ -111,8 +152,9 @@ function App() {
       <ReferralTracker />
       <Toaster position="top-right" containerStyle={{ top: 80 }} />
       <FeatureBanner />
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
+      <ChunkErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
           {/* New Marketing Pages (Navbar & Footer handled by MainLayout internally) */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -230,6 +272,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      </ChunkErrorBoundary>
     </Router>
   );
 }
