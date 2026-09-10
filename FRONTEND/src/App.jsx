@@ -106,6 +106,7 @@ const PublicResultsPage = lazy(() => import("./Pages/Hackathon/PublicResultsPage
 const PublicCertificateVerificationPage = lazy(() => import("./Pages/Hackathon/PublicCertificateVerificationPage"));
 const EditorialLogin = lazy(() => import("./Pages/Hackathon/Editorial/EditorialLogin"));
 const EditorialDashboard = lazy(() => import("./Pages/Hackathon/Editorial/EditorialDashboard"));
+const HackathonHomePreview = lazy(() => import("./hackathon-ui/HackathonHome"));
 
 const UnifiedLayout = () => (
   <MainLayout>
@@ -219,6 +220,10 @@ function App() {
 
           <Route path="/hackathon" element={<HackathonProvider><HackathonPortal /></HackathonProvider>} />
           <Route path="/hackathon/:slug" element={<HackathonProvider><HackathonPortal /></HackathonProvider>} />
+          
+          {/* Isolated Preview Route for Code From The Other Side UI */}
+          <Route path="/hackathon-preview" element={<HackathonHomePreview />} />
+
           <Route path="/resume-builder" element={<PublicResumeBuilder />} />
           <Route path="/mock-interview" element={<PublicMockInterview />} />
           <Route path="/privacy-policy" element={<Privacy />} />

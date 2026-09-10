@@ -1,0 +1,146 @@
+{
+  "status": "success",
+  "data": {
+    "branding": {
+      "name": "BUILDX",
+      "organizer": "CODE-A-NOVA",
+      "tagline": "36 HOURS. ONE MYSTERY. INFINITE POSSIBILITIES.",
+      "shortTagline": "An unknown problem has been detected.",
+      "description": "A 36-hour national-level engineering hackathon where developers, engineers, and designers investigate real-world challenges and build meaningful solutions."
+    },
+    "event": {
+      "format": "Online / Virtual",
+      "duration": "36 Hours",
+      "level": "National Level",
+      "teamSize": "1 - 4 Members",
+      "eligibility": "Open to all enrolled students and recent graduates across India",
+      "status": "INVESTIGATION ACTIVE"
+    },
+    "dates": {
+      "registrationOpen": null,
+      "registrationDeadline": null,
+      "start": null,
+      "end": null,
+      "results": null,
+      "displayDateText": "OFFICIAL TIMEFRAME ANNOUNCING SOON"
+    },
+    "tracks": [
+      {
+        "id": "ai-ml",
+        "caseNo": "CASE // 01",
+        "title": "AI & Autonomous Intelligence",
+        "tag": "NEURAL SIGNAL",
+        "description": "Investigate model interpretability, adversarial safety, localized inference, and autonomous multi-agent reasoning systems.",
+        "frequency": "142.8 MHz"
+      },
+      {
+        "id": "cybersecurity",
+        "caseNo": "CASE // 02",
+        "title": "Cyber Defense & Threat Intelligence",
+        "tag": "ANOMALY",
+        "description": "Detect subtle system intrusions, reverse-engineer zero-day exploits, secure supply chains, and build zero-trust architectures.",
+        "frequency": "433.9 MHz"
+      },
+      {
+        "id": "web-systems",
+        "caseNo": "CASE // 03",
+        "title": "Web Systems & Distributed Fabrics",
+        "tag": "INFRASTRUCTURE",
+        "description": "Architect high-concurrency protocols, peer-to-peer data synchronization, and ultra-resilient distributed web applications.",
+        "frequency": "868.1 MHz"
+      },
+      {
+        "id": "fintech",
+        "caseNo": "CASE // 04",
+        "title": "FinTech & Algorithmic Security",
+        "tag": "LEDGER",
+        "description": "Develop automated anti-fraud detectors, micro-settlement frameworks, algorithmic compliance, and smart financial telemetry.",
+        "frequency": "915.0 MHz"
+      },
+      {
+        "id": "health",
+        "caseNo": "CASE // 05",
+        "title": "HealthTech & Bio-Signal Telemetry",
+        "tag": "MONITORING",
+        "description": "Analyze non-invasive health signals, secure clinical patient records, and build predictive diagnostic monitoring systems.",
+        "frequency": "2.4 GHz"
+      },
+      {
+        "id": "sustainability",
+        "caseNo": "CASE // 06",
+        "title": "Sustainability & Environmental Sensing",
+        "tag": "GEODATA",
+        "description": "Build computational climate models, resource consumption monitors, and distributed environmental telemetry networks.",
+        "frequency": "5.8 GHz"
+      },
+      {
+        "id": "open",
+        "caseNo": "CASE // 07",
+        "title": "Open Investigation (Wild Card)",
+        "tag": "ANOMALOUS",
+        "description": "An unclassified anomaly that defies conventional categorization. Bring your boldest moonshot engineering project.",
+        "frequency": "UNKNOWN"
+      }
+    ],
+    "journey": [
+      { "step": "01", "code": "REGISTER", "title": "Initial Filing" },
+      { "step": "02", "code": "FORM YOUR TEAM", "title": "Squad Assembly" },
+      { "step": "03", "code": "CHOOSE YOUR CASE", "title": "Track Briefing" },
+      { "step": "04", "code": "BUILD", "title": "The 36-Hour Sprint" },
+      { "step": "05", "code": "SUBMIT", "title": "Evidence Filing" },
+      { "step": "06", "code": "GET EVALUATED", "title": "Council Examination" },
+      { "step": "07", "code": "RESULTS", "title": "Final Verdict" }
+    ],
+    "timeline": [
+      { "time": "00:00", "title": "CASE OPENED", "tag": "HOUR 00" },
+      { "time": "06:00", "title": "FIRST EVIDENCE", "tag": "HOUR 06" },
+      { "time": "12:00", "title": "THE BUILD", "tag": "HOUR 12" },
+      { "time": "18:00", "title": "SIGNAL STRENGTHENS", "tag": "HOUR 18" },
+      { "time": "24:00", "title": "FINAL PUSH", "tag": "HOUR 24" },
+      { "time": "30:00", "title": "EVIDENCE LOCKED", "tag": "HOUR 30" },
+      { "time": "36:00", "title": "CASE CLOSED", "tag": "HOUR 36" }
+    ],
+    "rewards": {
+      "poolAnnouncementText": "PRIZE DOSSIER TO BE UNSEALED",
+      "poolHighlight": "NATIONAL LEVEL HONORS & BOUNTIES",
+      "tiers": [
+        {
+          "rank": "01",
+          "title": "CASE SOLVER (WINNER)",
+          "badge": "NATIONAL CHAMPION",
+          "displayAmount": "REVEALING SOON",
+          "highlight": true
+        },
+        {
+          "rank": "02",
+          "title": "1ST RUNNER UP",
+          "badge": "DISTINGUISHED INVESTIGATOR",
+          "displayAmount": "REVEALING SOON",
+          "highlight": false
+        },
+        {
+          "rank": "03",
+          "title": "2ND RUNNER UP",
+          "badge": "MERIT RECOGNITION",
+          "displayAmount": "REVEALING SOON",
+          "highlight": false
+        },
+        {
+          "rank": "04",
+          "title": "SPECIAL AWARDS",
+          "badge": "TRACK EXCELLENCE",
+          "displayAmount": "REVEALING SOON",
+          "highlight": false
+        }
+      ]
+    },
+    "sponsors": {
+      "tiers": [
+        { "tierName": "TITLE PARTNER", "slots": [{ "name": "EVIDENCE // TITLE ALLY", "status": "AVAILABLE" }] },
+        { "tierName": "POWERED BY", "slots": [{ "name": "EVIDENCE // CO-HOST", "status": "AVAILABLE" }] },
+        { "tierName": "TECH & CLOUD PARTNERS", "slots": [{ "name": "INFRASTRUCTURE ALLY", "status": "AVAILABLE" }] },
+        { "tierName": "COMMUNITY ALLIANCES", "slots": [{ "name": "CAMPUS NETWORKS", "status": "CONFIRMED" }] }
+      ]
+    }
+  }
+}
