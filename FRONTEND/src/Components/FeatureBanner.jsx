@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { X, ExternalLink } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -13,6 +14,13 @@ const isVideo = (url) => {
 };
 
 const FeatureBanner = () => {
+  const location = useLocation();
+
+  // User: "hackathon wale page pe banner show nhi krna h"
+  if (location.pathname.toLowerCase().includes('hackathon')) {
+    return null;
+  }
+
   const [isVisible, setIsVisible] = useState(false);
   const [shouldFetch, setShouldFetch] = useState(false);
 

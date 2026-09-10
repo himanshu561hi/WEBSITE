@@ -1,14 +1,15 @@
 import React, { memo, useState, useEffect } from "react";
 import { storyConfig } from "../../config/storyConfig";
+import { useParanormalAssetPreloader } from "../../hooks/useParanormalAssetPreloader";
 
 /**
  * CinematicScene
  * Renders the primary scene image (Home.png) in a fixed/sticky viewport.
  * Features:
- * - Starts with a pitch black screen and classified scanning signal.
- * - Smoothly emerges out of black with a deep cinematic blur-to-sharp exposure reveal (2.2s).
+ * - Preloads and decodes ALL 14 scene images into GPU cache upfront ("ek bar me load").
+ * - Starts with classified radar telemetry and real percentage progress.
+ * - Smoothly emerges out of black once assets are 100% ready.
  * - Preserves aspect ratio with object-fit: cover and zero distortion.
- * - Coordinates with CinematicHeroData to show the homepage dossier on the left dark wall.
  */
 const CinematicScene = memo(function CinematicScene({
   imageSrc,
@@ -17,12 +18,9 @@ const CinematicScene = memo(function CinematicScene({
   cameraTransform = {},
   onRevealComplete,
 }) {
-  // Reveal Stages:
-  // 0: Pitch Black + "THE SIGNAL IS STILL ACTIVE" classified radar telemetry (top-of-page only)
-  // 1: Scanning overlay fades out & scene image emerges
-  // 2: Complete clarity, hero data revealed
   const isScrolled = scrollProgress > 0.005;
   const [revealStage, setRevealStage] = useState(() => (isScrolled ? 2 : 0));
+  const { progress, isReady } = useParanormalAssetPreloader();
 
   useEffect(() => {
     // If user starts scrolled down or scrolls at all, immediately clear intro
@@ -32,21 +30,23 @@ const CinematicScene = memo(function CinematicScene({
       return;
     }
 
-    // Top-of-page intro sequence
-    const t1 = setTimeout(() => {
-      setRevealStage(1);
-    }, 850);
+    // Reveal only after all scene images are 100% loaded & decoded in GPU memory
+    if (isReady) {
+      const t1 = setTimeout(() => {
+        setRevealStage(1);
+      }, 400);
 
-    const t2 = setTimeout(() => {
-      setRevealStage(2);
-      if (onRevealComplete) onRevealComplete();
-    }, 1500);
+      const t2 = setTimeout(() => {
+        setRevealStage(2);
+        if (onRevealComplete) onRevealComplete();
+      }, 950);
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [scrollProgress > 0.005, onRevealComplete]);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [isReady, scrollProgress > 0.005, onRevealComplete]);
 
   // If user scrolls even 1px at any speed, instantly dismiss the scanning screen
   useEffect(() => {
@@ -113,14 +113,14 @@ const CinematicScene = memo(function CinematicScene({
         }}
       />
 
-      {/* 3. Initial Classified Scanning Telemetry (Never rendered once user scrolls) */}
+      {/* 3. Initial Classified Scanning Telemetry (Waits for all images to decode) */}
       {showScanningOverlay && (
         <div
           className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/95 text-center pointer-events-none transition-opacity duration-500 ${
             revealStage === 1 ? "opacity-0" : "opacity-100"
           }`}
         >
-          <div className="space-y-3 font-mono">
+          <div className="space-y-3 font-mono max-w-sm px-4">
             <div className="text-xs text-[#D01820] tracking-widest uppercase animate-pulse flex items-center justify-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
               <span>{storyConfig.initialLoad.badge}</span>
@@ -130,8 +130,25 @@ const CinematicScene = memo(function CinematicScene({
               {storyConfig.initialLoad.signalText}
             </div>
 
-            <div className="text-[11px] text-stone-500 tracking-widest uppercase pt-2 animate-pulse">
-              INITIALIZING RECONNAISSANCE TELEMETRY...
+            {/* Realtime 14-Scene Asset Preloading & GPU Decoding HUD */}
+            <div className="pt-2 flex flex-col items-center gap-2">
+              <div className="text-[11px] tracking-widest uppercase font-semibold text-stone-400">
+                {isReady ? (
+                  <span className="text-emerald-400 font-bold tracking-wider animate-pulse">
+                    ✓ ALL SCENE EVIDENCE DECODED // SYSTEM READY
+                  </span>
+                ) : (
+                  <span>DECRYPTING EVIDENCE ARCHIVES [ {progress}% ]</span>
+                )}
+              </div>
+
+              {/* Glowing High-Tech Crimson Progress Bar */}
+              <div className="w-48 sm:w-56 h-1.5 bg-stone-900 border border-red-900/60 rounded-full overflow-hidden shadow-[0_0_10px_rgba(208,24,32,0.3)]">
+                <div
+                  className="h-full bg-gradient-to-r from-red-700 via-[#D01820] to-amber-400 transition-all duration-150 rounded-full"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import scene02Img from "../assets/scenes/home-02.png";
 import scene03Img from "../assets/scenes/home-03.png";
 import scene06Img from "../assets/scenes/home-06.png";
 import scene07Img from "../assets/scenes/home-07.png";
-import scene08Img from "../assets/scenes/home-08.png";
+import scene08Img from "../assets/scenes/home-08.jpg";
 import scene09Img from "../assets/scenes/home-09.png";
 import scene10Img from "../assets/scenes/home-10.png";
 import scene10MapImg from "../assets/scenes/home-10-map.png";

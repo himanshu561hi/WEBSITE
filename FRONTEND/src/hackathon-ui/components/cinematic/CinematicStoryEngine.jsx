@@ -1300,6 +1300,19 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
         reducedMotion={reducedMotion}
         intensity={2.2}
       />
+
+      {/* ── Persistent Asset Cache & GPU Texture Warm-Up Strip (Ensures all 14 scene images load in one go) ── */}
+      <div className="sr-only opacity-0 pointer-events-none select-none" aria-hidden="true">
+        {scenes.map((s) => (
+          <img
+            key={s.id}
+            src={s.image}
+            alt=""
+            loading="eager"
+            decoding="sync"
+          />
+        ))}
+      </div>
     </div>
   );
 });
