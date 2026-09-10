@@ -600,6 +600,13 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const boardAdvanceProgress = Math.min(Math.max((scrollProgress - 0.992) / 0.0028, 0), 1);
   const boardAdvanceEase = Math.pow(boardAdvanceProgress, 1.35);
   const scene15Scale = (1.18 + boardAdvanceEase * 0.38); // deep optical zoom toward board
+
+  // The 3D Camera Pan across Scene 15 — MUST be declared before scene15PanX uses it:
+  const cameraPanX = 6.0 - cameraMoveEase * 16.0; // sweeps from +6% (left/hand) to -10% (right/rules table)
+  const cameraYawY = 6.0 - cameraMoveEase * 12.0; // camera rotates from +6deg to -6deg
+  const cameraPitchX = -2.5 + cameraMoveEase * 2.5; // tilts up from looking down at scroll (-2.5deg) to eye level (0deg)
+  const cameraRollZ = panVelocity * -1.5; // natural handheld dynamic bank during turn
+
   const scene15PanX = cameraPanX - boardAdvanceEase * 14.0;
   const scene15PanY = -boardAdvanceEase * 18.0;
   // Radial/forward camera stride motion blur:
@@ -610,12 +617,6 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // Snappy focus handoff right as camera reaches the desk (0.9938 -> 0.9948)
   const scene15FadeOut = Math.min(Math.max((scrollProgress - 0.9938) / 0.0010, 0), 1);
   const scene15Opacity = scene15Entrance * (1.0 - scene15FadeOut);
-
-  // The 3D Camera Pan across Scene 15:
-  const cameraPanX = 6.0 - cameraMoveEase * 16.0; // sweeps from +6% (left/hand) to -10% (right/rules table)
-  const cameraYawY = 6.0 - cameraMoveEase * 12.0; // camera rotates from +6deg to -6deg
-  const cameraPitchX = -2.5 + cameraMoveEase * 2.5; // tilts up from looking down at scroll (-2.5deg) to eye level (0deg)
-  const cameraRollZ = panVelocity * -1.5; // natural handheld dynamic bank during turn
 
   // Continuous Steadicam Video Breathing
   const videoBreathCycle = scrollProgress * Math.PI * 44;
