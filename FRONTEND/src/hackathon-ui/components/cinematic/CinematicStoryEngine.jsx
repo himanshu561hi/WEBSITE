@@ -30,11 +30,86 @@ function getActiveSceneId(p, currentId) {
   if (p < 0.954 - (currentId === "scene-11" ? -h : h)) return "scene-11";
   if (p < 0.963 - (currentId === "scene-12" ? -h : h)) return "scene-12";
   if (p < 0.971 - (currentId === "scene-13" ? -h : h)) return "scene-13";
-  if (p < 0.988 - (currentId === "scene-14" ? -h : h)) return "scene-14";
-  if (p < 0.9935 - (currentId === "scene-15" ? -h : h)) return "scene-15";
-  if (p < 0.9972 - (currentId === "scene-16" ? -h : h)) return "scene-16";
+  if (p < 0.978 - (currentId === "scene-14" ? -h : h)) return "scene-14";
+  if (p < 0.983 - (currentId === "scene-15" ? -h : h)) return "scene-15";
+  if (p < 0.987 - (currentId === "scene-16" ? -h : h)) return "scene-16";
   return "scene-17";
 }
+
+// ── Occult Rules Board Metadata & 7 Protocols ──
+const RULES_DATA = [
+  {
+    num: "01",
+    title: "PPT REGISTRATION",
+    badge: "PHASE 01",
+    desc: "Teams register & submit their initial idea/proposal PPT within the registration period.",
+  },
+  {
+    num: "02",
+    title: "PPT SUBMISSION DEADLINE",
+    badge: "PHASE 02",
+    desc: "All teams must submit their PPT before the announced deadline. Late submissions not considered.",
+  },
+  {
+    num: "03",
+    title: "PPT SHORTLISTING",
+    badge: "PHASE 03",
+    desc: "Submitted PPTs reviewed by organizing/judging panel. Shortlisted teams announced via official channels.",
+  },
+  {
+    num: "04",
+    title: "CONFIRMATION & PAYMENT",
+    badge: "PHASE 04",
+    desc: "Shortlisted teams confirm participation & complete registration. ₹49 per team.",
+  },
+  {
+    num: "05",
+    title: "36-HOUR HACKATHON",
+    badge: "PHASE 05",
+    desc: "Confirmed teams participate in the main 36-hour online hackathon & build their solution.",
+  },
+  {
+    num: "06",
+    title: "FINAL SUBMISSION DEADLINE",
+    badge: "PHASE 06",
+    desc: "Teams submit final project, source code, demo/presentation & required details before deadline.",
+  },
+  {
+    num: "07",
+    title: "EVALUATION & RESULTS",
+    badge: "PHASE 07",
+    desc: "Final submissions evaluated by judges; winners declared with ₹50,000+ bounty distribution.",
+  },
+];
+
+// ── Cinematic Z-Pattern Camera Waypoints across Rules 01 -> 07 ──
+const RULES_WAYPOINTS = [
+  // 0. Board Entry: Starts centered at 1.0 scale
+  { p: 0.00, x: 0.500, y: 0.500, s: 1.00, rule: 0 },
+  // 1. Zoom in to Rule 01 (Top-Left: PPT Registration)
+  { p: 0.08, x: 0.227, y: 0.408, s: 2.10, rule: 1 },
+  { p: 0.17, x: 0.227, y: 0.408, s: 2.10, rule: 1 }, // dwell on rule 1
+  // 2. Pan right across to Rule 02 (Top Mid-Left: PPT Submission Deadline)
+  { p: 0.24, x: 0.407, y: 0.408, s: 2.10, rule: 2 },
+  { p: 0.33, x: 0.407, y: 0.408, s: 2.10, rule: 2 }, // dwell on rule 2
+  // 3. Pan right to Rule 03 (Top Mid-Right: PPT Shortlisting)
+  { p: 0.40, x: 0.581, y: 0.408, s: 2.10, rule: 3 },
+  { p: 0.48, x: 0.581, y: 0.408, s: 2.10, rule: 3 }, // dwell on rule 3
+  // 4. Pan to Top-Right on Rule 04 (Confirmation & Payment)
+  { p: 0.55, x: 0.764, y: 0.408, s: 2.10, rule: 4 },
+  { p: 0.62, x: 0.764, y: 0.408, s: 2.10, rule: 4 }, // dwell on rule 4
+  // 5. DIAGONAL SWOOP! Camera moves from Top-Right down-left to Bottom-Left on Rule 05 (36-Hour Hackathon)
+  { p: 0.68, x: 0.500, y: 0.544, s: 1.78, rule: 0 }, // midpoint of diagonal swoop
+  { p: 0.74, x: 0.268, y: 0.680, s: 2.10, rule: 5 }, // arrives at Rule 05
+  { p: 0.81, x: 0.268, y: 0.680, s: 2.10, rule: 5 }, // dwell on rule 5
+  // 6. Pan right across to Rule 06 (Bottom Center: Final Submission Deadline)
+  { p: 0.87, x: 0.505, y: 0.680, s: 2.10, rule: 6 },
+  { p: 0.92, x: 0.505, y: 0.680, s: 2.10, rule: 6 }, // dwell on rule 6
+  // 7. Pan to Bottom-Right on Rule 07 (Evaluation & Results)
+  { p: 0.96, x: 0.732, y: 0.680, s: 2.10, rule: 7 },
+  // 8. Climax: Pull back to full board overview before continuing to Chapter II
+  { p: 1.00, x: 0.500, y: 0.500, s: 1.00, rule: 0 },
+];
 
 /**
  * CinematicStoryEngine
@@ -570,8 +645,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const handTremorRot = Math.sin(handShakeCycle * 0.9) * 0.55 + Math.cos(handShakeCycle * 1.8) * 0.25;
 
   // ── True First-Person Camera Movement: Camera Pans Right into Crypt Sanctum ──
-  // Camera move starts at 0.988 after user has enjoyed the Save The Date scroll
-  const cameraMoveProgress = Math.min(Math.max((scrollProgress - 0.988) / 0.006, 0), 1);
+  const cameraMoveProgress = Math.min(Math.max((scrollProgress - 0.976) / 0.006, 0), 1);
   // Smooth S-curve acceleration and deceleration for real physical camera motion
   const cameraMoveEase = 0.5 - 0.5 * Math.cos(cameraMoveProgress * Math.PI);
   // Rotational pan velocity for dynamic optical motion blur & lens flare streak
@@ -594,10 +668,10 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.003, 0), 1);
   const ink14RevealProgress = inkRevealProgress;
 
-  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.988 -> 0.995) ──
-  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.988) / 0.002, 0), 1);
+  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.976 -> 0.984) ──
+  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.976) / 0.0025, 0), 1);
   // Fast camera step forward into the right wall / rules desk:
-  const boardAdvanceProgress = Math.min(Math.max((scrollProgress - 0.992) / 0.0028, 0), 1);
+  const boardAdvanceProgress = Math.min(Math.max((scrollProgress - 0.979) / 0.0032, 0), 1);
   const boardAdvanceEase = Math.pow(boardAdvanceProgress, 1.35);
   const scene15Scale = (1.18 + boardAdvanceEase * 0.38); // deep optical zoom toward board
 
@@ -614,8 +688,8 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // Volumetric candle flare flash as investigator passes the tall candelabras:
   const stepCandleFlash = Math.sin(boardAdvanceProgress * Math.PI) * 0.70;
 
-  // Snappy focus handoff right as camera reaches the desk (0.9938 -> 0.9948)
-  const scene15FadeOut = Math.min(Math.max((scrollProgress - 0.9938) / 0.0010, 0), 1);
+  // Snappy focus handoff right as camera reaches the desk
+  const scene15FadeOut = Math.min(Math.max((scrollProgress - 0.9822) / 0.0018, 0), 1);
   const scene15Opacity = scene15Entrance * (1.0 - scene15FadeOut);
 
   // Continuous Steadicam Video Breathing
@@ -625,18 +699,44 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.22;
   const candleFlicker = 1.0 + Math.sin(scrollProgress * Math.PI * 32) * 0.06;
 
-  // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9936 -> 0.9990) ──
-  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9936) / 0.0018, 0), 1);
+  // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9820 -> 0.9870) ──
+  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9820) / 0.0020, 0), 1);
   const scene16EntranceEase = 0.5 - 0.5 * Math.cos(scene16Entrance * Math.PI);
-  const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9980) / 0.0022, 0), 1);
+  const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9860) / 0.0020, 0), 1);
   const scene16FadeOutEase = 0.5 - 0.5 * Math.cos(scene16FadeOut * Math.PI);
   const scene16Opacity = scene16EntranceEase * (1.0 - scene16FadeOutEase);
 
-  // ── 19. Scene 17: Full Page Rules Decree (home-17.jpg) (0.9978 -> 1.000) ──
-  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9978) / 0.003, 0), 1);
-  const scene17Opacity = 0.5 - 0.5 * Math.cos(scene17Entrance * Math.PI); // smooth fade in
-  // Kept: needed to prevent undefined errors for ZEase usage if referenced
+  // ── 19. Scene 17: Full Page Rules Decree & Z-Tour (home-17.jpg) (0.9855 -> 1.000) ──
+  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9855) / 0.0020, 0), 1);
+  const scene17Opacity = 0.5 - 0.5 * Math.cos(scene17Entrance * Math.PI);
   const scene17ZEase = scene17Entrance;
+
+  // Dynamic Scroll Tour across Rules 01 -> 07 (starts at 0.9875 and runs all the way to 0.9995)
+  const scene17TourProgress = Math.min(Math.max((scrollProgress - 0.9875) / 0.0120, 0), 1);
+
+  // Interpolate camera waypoints for smooth Z-glide
+  let w0 = RULES_WAYPOINTS[0];
+  let w1 = RULES_WAYPOINTS[1];
+  for (let i = 0; i < RULES_WAYPOINTS.length - 1; i++) {
+    if (scene17TourProgress >= RULES_WAYPOINTS[i].p && scene17TourProgress <= RULES_WAYPOINTS[i + 1].p) {
+      w0 = RULES_WAYPOINTS[i];
+      w1 = RULES_WAYPOINTS[i + 1];
+      break;
+    }
+  }
+  const span = Math.max(w1.p - w0.p, 0.0001);
+  const rawT = Math.min(Math.max((scene17TourProgress - w0.p) / span, 0), 1);
+  const easeT = 0.5 - 0.5 * Math.cos(rawT * Math.PI);
+
+  const s17CamX = w0.x + (w1.x - w0.x) * easeT;
+  const s17CamY = w0.y + (w1.y - w0.y) * easeT;
+  const s17CamScale = reducedMotion ? 1.0 : (w0.s + (w1.s - w0.s) * easeT);
+  const s17ActiveRuleId = rawT > 0.45 ? w1.rule : w0.rule;
+  const s17ActiveRule = s17ActiveRuleId > 0 ? RULES_DATA[s17ActiveRuleId - 1] : null;
+
+  // Normalized camera translation percentages:
+  const s17TransX = reducedMotion ? 0 : -(s17CamX - 0.5) * s17CamScale * 100;
+  const s17TransY = reducedMotion ? 0 : -(s17CamY - 0.5) * s17CamScale * 100;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1509,7 +1609,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           <div
             className="absolute top-16 sm:top-18 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/85 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none shadow-md"
             style={{
-              opacity: Math.min(Math.max((scrollProgress - 0.9950) / 0.002, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9985) / 0.002, 0), 1)),
+              opacity: Math.min(Math.max((scrollProgress - 0.9830) / 0.0015, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9860) / 0.0015, 0), 1)),
             }}
           >
             ✦ STEPPING FORWARD // SANCTUM PROCESS BOARD ✦
@@ -1517,8 +1617,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
         </div>
       )}
 
-      {/* ── Scene 17: Full Page Rules & Regulations Board (home-17.jpg) ── */}
-      {/* Edge-to-edge full width (no side space), anchored to top under navbar, bottom cut cleanly */}
+      {/* ── Scene 17: Full Page Rules Decree & Z-Tour (home-17.jpg) ── */}
       {scene17Opacity > 0.005 && (
         <div
           className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu overflow-hidden pt-14 sm:pt-16 pb-0 px-0"
@@ -1528,24 +1627,111 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
             backgroundColor: "#0a0604",
           }}
         >
-          <img
-            src={scene17?.image}
-            alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
-            className="w-full h-full pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
-            style={{
-              objectFit: "cover",
-              objectPosition: "center top",
-            }}
-            loading="eager"
-            decoding="async"
-          />
-          {/* Dual Sconce Candlelight Glow */}
+          {/* Animated 3D Camera Pan & Zoom Stage */}
           <div
-            className="absolute inset-0 pointer-events-none mix-blend-screen"
+            className="w-full h-full relative will-change-transform transform-gpu"
             style={{
-              background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
+              transform: `translate3d(${s17TransX}%, ${s17TransY}%, 0) scale(${s17CamScale})`,
+              transformOrigin: "50% 50%",
             }}
-          />
+          >
+            <img
+              src={scene17?.image}
+              alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
+              className="w-full h-full pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center top",
+              }}
+              loading="eager"
+              decoding="async"
+            />
+
+            {/* Dual Sconce Candlelight Glow inside world space */}
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-screen"
+              style={{
+                background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
+              }}
+            />
+          </div>
+
+          {/* Dynamic Spotlight Beam (Focuses on Active Rule Card, dims surroundings) */}
+          {s17CamScale > 1.25 && (
+            <div
+              className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+              style={{
+                background:
+                  "radial-gradient(ellipse 52% 44% at 50% 50%, rgba(245,158,11,0.06) 0%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.60) 72%, rgba(0,0,0,0.88) 100%)",
+              }}
+            />
+          )}
+
+          {/* Active Rule Optical Targeting Reticle Frame */}
+          {s17ActiveRule && s17CamScale > 1.35 && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="relative w-[340px] sm:w-[460px] h-[210px] sm:h-[260px] border border-[#D01820]/40 rounded-xs shadow-[0_0_35px_rgba(208,24,32,0.25)] flex flex-col justify-between p-2">
+                {/* 4 Corner Optical Brackets */}
+                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-[#D01820]" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-[#D01820]" />
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-[#D01820]" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-[#D01820]" />
+
+                {/* Reticle Top Info */}
+                <div className="flex items-center justify-between font-mono text-[9px] text-[#D01820] tracking-widest uppercase">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D01820] animate-ping" />
+                    TARGET LOCKED // {s17ActiveRule.badge}
+                  </span>
+                  <span className="text-amber-500 font-bold">FOCUS ACTIVE</span>
+                </div>
+
+                {/* Reticle Bottom Info */}
+                <div className="flex items-center justify-between font-mono text-[9px] text-stone-400 tracking-wider">
+                  <span>STEP {s17ActiveRule.num} OF 07</span>
+                  <span className="text-[#D01820]/80">BUILDX 2026 // CODE-A-NOVA</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Top Floating Telemetry Protocol Banner with 7-Step Progress */}
+          {s17ActiveRule && s17CamScale > 1.25 ? (
+            <div className="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 w-[94%] max-w-xl px-4 py-2.5 bg-black/90 backdrop-blur-md border border-[#D01820]/80 rounded-xs shadow-[0_0_30px_rgba(208,24,32,0.35)] pointer-events-none transition-all duration-300 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-[#D01820] text-white font-mono text-[10px] sm:text-xs font-bold rounded-xs tracking-widest uppercase animate-pulse">
+                    RULE {s17ActiveRule.num}
+                  </span>
+                  <span className="font-mono text-xs sm:text-sm text-white font-bold tracking-wider uppercase">
+                    {s17ActiveRule.title}
+                  </span>
+                </div>
+                {/* 7 Progress Dots */}
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                    <span
+                      key={n}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        parseInt(s17ActiveRule.num, 10) === n
+                          ? "bg-[#D01820] scale-125 shadow-[0_0_8px_#D01820]"
+                          : parseInt(s17ActiveRule.num, 10) > n
+                          ? "bg-stone-500"
+                          : "bg-stone-800"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="font-mono text-[10px] sm:text-xs text-stone-300 tracking-wide leading-tight">
+                {s17ActiveRule.desc}
+              </div>
+            </div>
+          ) : (
+            <div className="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-black/85 border border-[#D01820]/70 rounded-xs font-mono text-[10px] sm:text-xs text-stone-200 tracking-widest uppercase pointer-events-none shadow-[0_0_20px_rgba(208,24,32,0.3)]">
+              ✦ SCROLL DOWN TO INSPECT RULES 01 ➔ 07 ✦
+            </div>
+          )}
         </div>
       )}
 
