@@ -626,39 +626,32 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const candleFlicker = 1.0 + Math.sin(scrollProgress * Math.PI * 32) * 0.06;
 
   // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9936 -> 0.9990) ──
-  // Extended window so it lingers longer before Scene 17 cross-dissolves in
   const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9936) / 0.0018, 0), 1);
   const scene16EntranceEase = 0.5 - 0.5 * Math.cos(scene16Entrance * Math.PI);
-  // Slow gentle push-forward zoom from angled approach into the board
-  const scene16Scale = 1.00 + scene16EntranceEase * 0.035;
-  // Scene 16 fades out slowly to overlap Scene 17 (cross-dissolve, NOT a cut)
+  // Gentle push-forward zoom
+  const scene16Scale = 1.00 + scene16EntranceEase * 0.03;
   const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9980) / 0.0022, 0), 1);
-  const scene16FadeOutEase = 0.5 - 0.5 * Math.cos(scene16FadeOut * Math.PI); // smooth ease
+  const scene16FadeOutEase = 0.5 - 0.5 * Math.cos(scene16FadeOut * Math.PI);
   const scene16Opacity = scene16EntranceEase * (1.0 - scene16FadeOutEase);
-
-  // No hard pivot/yaw - smooth steady camera keeps scene stable and organic
-  const pivotProgress = Math.min(Math.max((scrollProgress - 0.9975) / 0.002, 0), 1);
-  const pivotEase = 0.5 - 0.5 * Math.cos(pivotProgress * Math.PI);
-  const scene16PivotPanX = -pivotEase * 8.0; // subtle, not dramatic
-  const scene16PivotYaw = 0; // removed: this caused the flip effect
-  const scene16Blur = 0; // removed: blur caused visual artifact at cut point
+  const scene16PivotPanX = 0;
 
   const rulesBreathCycle = scrollProgress * Math.PI * 48;
-  const rulesBobY = Math.sin(rulesBreathCycle) * 1.8;
-  const rulesSwayX = Math.cos(rulesBreathCycle * 0.5) * 1.5;
-  const rulesTilt = Math.sin(rulesBreathCycle * 0.5) * 0.20;
+  const rulesBobY = Math.sin(rulesBreathCycle) * 1.0;
+  const rulesSwayX = Math.cos(rulesBreathCycle * 0.5) * 0.8;
+  const rulesTilt = Math.sin(rulesBreathCycle * 0.5) * 0.12;
 
-  // ── 19. Scene 17: Full Page Rules & Regulations Decree (home-17.jpg) (0.9978 -> 1.000) ──
-  // Starts fading in WHILE Scene 16 is still visible — true cross-dissolve
-  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9978) / 0.0028, 0), 1);
-  const scene17EntranceEase = 0.5 - 0.5 * Math.cos(scene17Entrance * Math.PI);
-  const scene17Opacity = scene17EntranceEase;
-  // No rotateY — squarely framed from the start, no flip
-  const scene17Scale = 1.02 - scene17EntranceEase * 0.02; // very subtle settle
-  const scene17Yaw = 0; // removed: was causing the flip feel
+  // ── 19. Scene 17: Full Page Rules Decree (home-17.jpg) Z-SLIDE ENTRY (0.9978 -> 1.000) ──
+  // User: "last wala image scroll pe slide hoga Z trike se and image screen pe zoom hoke Z me slide hogi ek focus ke sath"
+  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9978) / 0.003, 0), 1);
+  // Z-axis push-in: starts far away (scale 0.72) and rushes forward into full focus
+  const scene17ZEase = 1.0 - Math.pow(1.0 - scene17Entrance, 2.8); // fast deceleration = realistic inertia
+  const scene17Scale = 0.72 + scene17ZEase * 0.30; // 0.72 -> 1.02 (Z depth to full-screen)
+  // Vignette focus ring tightens as image zooms in: blurry at first, sharp at end
+  const scene17FocusBlur = (1.0 - scene17ZEase) * 6.0; // 6px -> 0px as it lands
+  const scene17Opacity = Math.pow(scene17Entrance, 0.5); // fades in fast initially then settles
   const scene17BreathCycle = scrollProgress * Math.PI * 52;
-  const scene17BobY = Math.sin(scene17BreathCycle) * 1.4;
-  const scene17SwayX = Math.cos(scene17BreathCycle * 0.5) * 1.2;
+  const scene17BobY = Math.sin(scene17BreathCycle) * 1.2 * scene17ZEase;
+  const scene17SwayX = Math.cos(scene17BreathCycle * 0.5) * 0.9 * scene17ZEase;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1499,18 +1492,23 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 16: Approaching the Sanctum Board (home-16.jpg) ── */}
-      {/* Slow cross-dissolve into Scene 17 — no flip, no cut */}
+      {/* Full body image, no top crop, smooth cross-dissolve into Scene 17 */}
       {scene16Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu"
           style={{
             opacity: scene16Opacity,
             zIndex: 34,
+            backgroundColor: "#000",
           }}
         >
+          {/* Outer overflow-visible wrapper: negative margins to prevent top-crop */}
           <div
-            className="relative w-full h-full will-change-transform transform-gpu"
+            className="absolute will-change-transform transform-gpu"
             style={{
+              inset: "-5% -4%",
+              width: "108%",
+              height: "110%",
               transform: `translate3d(calc(${scene16PivotPanX}px + ${rulesSwayX}px), ${rulesBobY}px, 0) scale(${scene16Scale}) rotateZ(${rulesTilt}deg)`,
               transformOrigin: "50% 50%",
             }}
@@ -1518,116 +1516,132 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
             <img
               src={scene16?.image}
               alt="Approaching the Sacred Rules & Regulations Sanctum Board"
-              className="w-full h-full object-cover object-center pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
+              className="w-full h-full object-cover pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
+              style={{ objectPosition: "50% 30%" }}
               loading="eager"
               decoding="async"
             />
 
-            {/* Cathedral Candlelight Radiance on the Carved Rules */}
+            {/* Cathedral Candlelight Radiance */}
             <div
               className="absolute inset-0 pointer-events-none mix-blend-screen"
               style={{
-                background: `radial-gradient(circle at 75% 45%, rgba(245, 158, 11, ${0.22 * candleFlicker}) 0%, transparent 55%), radial-gradient(circle at 20% 60%, rgba(220, 38, 38, 0.16) 0%, transparent 50%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)`,
+                background: `radial-gradient(circle at 75% 45%, rgba(245, 158, 11, ${0.22 * candleFlicker}) 0%, transparent 55%), radial-gradient(circle at 20% 60%, rgba(220, 38, 38, 0.16) 0%, transparent 50%)`,
               }}
             />
+          </div>
 
-            {/* Sanctum Telemetry Indicator at Top */}
-            <div
-              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none"
-              style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.9950) / 0.002, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9985) / 0.002, 0), 1)),
-              }}
-            >
-              ✦ STEPPING FORWARD // SANCTUM PROCESS BOARD ✦
-            </div>
+          {/* Sanctum Telemetry Indicator */}
+          <div
+            className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none"
+            style={{
+              opacity: Math.min(Math.max((scrollProgress - 0.9950) / 0.002, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9985) / 0.002, 0), 1)),
+            }}
+          >
+            ✦ STEPPING FORWARD // SANCTUM PROCESS BOARD ✦
           </div>
         </div>
       )}
 
-      {/* ── Scene 17: The Full Page Rules & Regulations Board (home-17.jpg) ── */}
-      {/* Cross-dissolves in smoothly over Scene 16 — organic cinematic blend, no flip */}
+      {/* ── Scene 17: Full Page Rules & Regulations Board (home-17.jpg) ── */}
+      {/* Z-SLIDE entry: zooms in from far depth (scale 0.72) into full focus, with lens blur snap */}
       {scene17Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu"
           style={{
             opacity: scene17Opacity,
             zIndex: 35,
+            backgroundColor: "#000",
           }}
         >
+          {/* Z-depth outer image wrapper — extends beyond viewport to prevent crop during zoom */}
           <div
-            className="relative w-full h-full will-change-transform transform-gpu"
+            className="absolute will-change-transform transform-gpu"
             style={{
+              inset: "-6% -5%",
+              width: "110%",
+              height: "112%",
               transform: `translate3d(${scene17SwayX}px, ${scene17BobY}px, 0) scale(${scene17Scale})`,
               transformOrigin: "50% 50%",
+              filter: scene17FocusBlur > 0.2 ? `blur(${scene17FocusBlur}px)` : "none",
             }}
           >
             <img
               src={scene17?.image}
               alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
-              className="w-full h-full object-cover object-center pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
+              className="w-full h-full object-cover pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
+              style={{ objectPosition: "50% 30%" }}
               loading="eager"
               decoding="async"
             />
 
-            {/* Dual Sconce Candlelight Glow on Left and Right borders */}
+            {/* Dual Sconce Candlelight Glow */}
             <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
+              className="absolute inset-0 pointer-events-none mix-blend-screen"
               style={{
-                background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.65) 100%)`,
+                background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
               }}
             />
+          </div>
 
-            {/* Top Telemetry Header */}
-            <div
-              className="absolute top-8 sm:top-12 left-1/2 -translate-x-1/2 px-4 py-1 bg-black/85 border border-[#D01820]/70 rounded-xs font-mono text-[10px] sm:text-xs text-[#e5e5e5] tracking-widest uppercase pointer-events-none transition-opacity duration-300 shadow-[0_0_20px_rgba(208,24,32,0.3)]"
-              style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.9972) / 0.001, 0), 1),
-              }}
-            >
-              ✦ OFFICIAL HACKATHON DECREE // COMPLETE PROCESS RULES ✦
+          {/* Focus vignette: tightens as image lands into view */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(ellipse 60% 60% at 50% 50%, transparent 0%, rgba(0,0,0,${0.85 * (1.0 - scene17ZEase)}) 100%)`,
+            }}
+          />
+          {/* Top Telemetry Header */}
+          <div
+            className="absolute top-8 sm:top-12 left-1/2 -translate-x-1/2 px-4 py-1 bg-black/85 border border-[#D01820]/70 rounded-xs font-mono text-[10px] sm:text-xs text-[#e5e5e5] tracking-widest uppercase pointer-events-none transition-opacity duration-300 shadow-[0_0_20px_rgba(208,24,32,0.3)]"
+            style={{
+              opacity: Math.min(Math.max((scrollProgress - 0.9988) / 0.0015, 0), 1),
+            }}
+          >
+            ✦ OFFICIAL HACKATHON DECREE // COMPLETE PROCESS RULES ✦
+          </div>
+
+          {/* Interactive Bottom Control Dock */}
+          <div
+            className="absolute bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-3 sm:p-4 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-3"
+            style={{
+              opacity: Math.min(Math.max((scrollProgress - 0.9990) / 0.001, 0), 1),
+              transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9990) / 0.001, 0), 1)) * 14}px, 0)`,
+            }}
+          >
+            <div className="flex flex-col text-left">
+              <div className="flex items-center gap-2 mb-0.5 font-mono text-[10px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
+                <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
+                <span>PHASES 01–07 SEALED // READY TO COMMENCE</span>
+              </div>
+              <div className="font-mono text-[10px] sm:text-xs text-stone-300 tracking-wide">
+                Online 36-Hr Sprint • ₹50,000+ Bounties • Entry ₹49/team • Nov 1-2, 2026
+              </div>
             </div>
 
-            {/* Interactive Bottom Control Dock */}
-            <div
-              className="absolute bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-3 sm:p-4 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-3"
-              style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.9975) / 0.001, 0), 1),
-                transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9975) / 0.001, 0), 1)) * 14}px, 0)`,
-              }}
-            >
-              <div className="flex flex-col text-left">
-                <div className="flex items-center gap-2 mb-0.5 font-mono text-[10px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
-                  <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
-                  <span>PHASES 01–07 SEALED // READY TO COMMENCE</span>
-                </div>
-                <div className="font-mono text-[10px] sm:text-xs text-stone-300 tracking-wide">
-                  Online 36-Hr Sprint • ₹50,000+ Bounties • Entry ₹49/team • Nov 1-2, 2026
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const el = document.getElementById("case-evidence-section");
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="px-3 sm:px-4 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  CASE FILES ➔
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRegisterClick}
-                  className="px-3 sm:px-4 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  ⚡ REGISTER NOW
-                </button>
-              </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("case-evidence-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="px-3 sm:px-4 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                CASE FILES ➔
+              </button>
+              <button
+                type="button"
+                onClick={handleRegisterClick}
+                className="px-3 sm:px-4 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                ⚡ REGISTER NOW
+              </button>
             </div>
           </div>
         </div>
       )}
+
 
       {/* Atmospheric Fog, Vignette & Film Grain */}
       <AtmosphericOverlay
