@@ -625,33 +625,37 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.22;
   const candleFlicker = 1.0 + Math.sin(scrollProgress * Math.PI * 32) * 0.06;
 
-  // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9936 -> 0.9972) ──
-  // User: "last image jo fade h usko replace kro and kkuch alag sa lgao abhi to clear pta chal rha h image h so aise kro"
-  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9936) / 0.0012, 0), 1);
-  // Physical camera landing inertia: starts at scale 1.07 and settles into crisp focus
-  const scene16Scale = 1.00 + (1.0 - scene16Entrance) * 0.07;
-  const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9968) / 0.0012, 0), 1);
-  const scene16Opacity = scene16Entrance * (1.0 - scene16FadeOut);
+  // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9936 -> 0.9990) ──
+  // Extended window so it lingers longer before Scene 17 cross-dissolves in
+  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9936) / 0.0018, 0), 1);
+  const scene16EntranceEase = 0.5 - 0.5 * Math.cos(scene16Entrance * Math.PI);
+  // Slow gentle push-forward zoom from angled approach into the board
+  const scene16Scale = 1.00 + scene16EntranceEase * 0.035;
+  // Scene 16 fades out slowly to overlap Scene 17 (cross-dissolve, NOT a cut)
+  const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9980) / 0.0022, 0), 1);
+  const scene16FadeOutEase = 0.5 - 0.5 * Math.cos(scene16FadeOut * Math.PI); // smooth ease
+  const scene16Opacity = scene16EntranceEase * (1.0 - scene16FadeOutEase);
 
-  // Perspective pivot as investigator turns square in front of the board:
-  const pivotProgress = Math.min(Math.max((scrollProgress - 0.9960) / 0.0018, 0), 1);
+  // No hard pivot/yaw - smooth steady camera keeps scene stable and organic
+  const pivotProgress = Math.min(Math.max((scrollProgress - 0.9975) / 0.002, 0), 1);
   const pivotEase = 0.5 - 0.5 * Math.cos(pivotProgress * Math.PI);
-  const scene16PivotPanX = -pivotEase * 20.0;
-  const scene16PivotYaw = -pivotEase * 8.0;
-  const scene16Blur = pivotEase * 3.5;
+  const scene16PivotPanX = -pivotEase * 8.0; // subtle, not dramatic
+  const scene16PivotYaw = 0; // removed: this caused the flip effect
+  const scene16Blur = 0; // removed: blur caused visual artifact at cut point
 
   const rulesBreathCycle = scrollProgress * Math.PI * 48;
   const rulesBobY = Math.sin(rulesBreathCycle) * 1.8;
   const rulesSwayX = Math.cos(rulesBreathCycle * 0.5) * 1.5;
   const rulesTilt = Math.sin(rulesBreathCycle * 0.5) * 0.20;
 
-  // ── 19. Scene 17: Full Page Rules & Regulations Decree (home-17.jpg) (0.9968 -> 1.000) ──
-  // User: "and last me full page rules wala h"
-  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9968) / 0.0012, 0), 1);
-  const scene17Opacity = scene17Entrance;
-  // Camera squares up squarely: starts slightly rotated and aligns perfectly centered
-  const scene17Scale = 1.03 - scene17Entrance * 0.03;
-  const scene17Yaw = (1.0 - scene17Entrance) * 5.0;
+  // ── 19. Scene 17: Full Page Rules & Regulations Decree (home-17.jpg) (0.9978 -> 1.000) ──
+  // Starts fading in WHILE Scene 16 is still visible — true cross-dissolve
+  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9978) / 0.0028, 0), 1);
+  const scene17EntranceEase = 0.5 - 0.5 * Math.cos(scene17Entrance * Math.PI);
+  const scene17Opacity = scene17EntranceEase;
+  // No rotateY — squarely framed from the start, no flip
+  const scene17Scale = 1.02 - scene17EntranceEase * 0.02; // very subtle settle
+  const scene17Yaw = 0; // removed: was causing the flip feel
   const scene17BreathCycle = scrollProgress * Math.PI * 52;
   const scene17BobY = Math.sin(scene17BreathCycle) * 1.4;
   const scene17SwayX = Math.cos(scene17BreathCycle * 0.5) * 1.2;
@@ -1495,22 +1499,20 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 16: Approaching the Sanctum Board (home-16.jpg) ── */}
-      {/* User: "last image jo fade h usko replace kro and kkuch alag sa lgao abhi to clear pta chal rha h image h so aise kro" */}
+      {/* Slow cross-dissolve into Scene 17 — no flip, no cut */}
       {scene16Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-500 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black will-change-transform transform-gpu"
           style={{
             opacity: scene16Opacity,
             zIndex: 34,
-            perspective: "1200px",
           }}
         >
           <div
-            className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
+            className="relative w-full h-full will-change-transform transform-gpu"
             style={{
-              transform: `translate3d(calc(${scene16PivotPanX}px + ${rulesSwayX}px), ${rulesBobY}px, 0) scale(${scene16Scale}) rotateY(${scene16PivotYaw}deg) rotateZ(${rulesTilt}deg)`,
+              transform: `translate3d(calc(${scene16PivotPanX}px + ${rulesSwayX}px), ${rulesBobY}px, 0) scale(${scene16Scale}) rotateZ(${rulesTilt}deg)`,
               transformOrigin: "50% 50%",
-              filter: reducedMotion ? "none" : (scene16Blur > 0.3 ? `blur(${scene16Blur}px)` : "none"),
             }}
           >
             <img
@@ -1523,7 +1525,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
 
             {/* Cathedral Candlelight Radiance on the Carved Rules */}
             <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
+              className="absolute inset-0 pointer-events-none mix-blend-screen"
               style={{
                 background: `radial-gradient(circle at 75% 45%, rgba(245, 158, 11, ${0.22 * candleFlicker}) 0%, transparent 55%), radial-gradient(circle at 20% 60%, rgba(220, 38, 38, 0.16) 0%, transparent 50%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)`,
               }}
@@ -1531,9 +1533,9 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
 
             {/* Sanctum Telemetry Indicator at Top */}
             <div
-              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
+              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none"
               style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.994) / 0.0015, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9968) / 0.001, 0), 1)),
+                opacity: Math.min(Math.max((scrollProgress - 0.9950) / 0.002, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9985) / 0.002, 0), 1)),
               }}
             >
               ✦ STEPPING FORWARD // SANCTUM PROCESS BOARD ✦
@@ -1543,20 +1545,19 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 17: The Full Page Rules & Regulations Board (home-17.jpg) ── */}
-      {/* User: "and then wo ho jane ke bad mai ek image de rha hu wobhi add kro 2 image add krra hu dekho lo dono and last me full page rules wala h" */}
+      {/* Cross-dissolves in smoothly over Scene 16 — organic cinematic blend, no flip */}
       {scene17Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-500 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black will-change-transform transform-gpu"
           style={{
             opacity: scene17Opacity,
             zIndex: 35,
-            perspective: "1200px",
           }}
         >
           <div
-            className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
+            className="relative w-full h-full will-change-transform transform-gpu"
             style={{
-              transform: `translate3d(${scene17SwayX}px, ${scene17BobY}px, 0) scale(${scene17Scale}) rotateY(${scene17Yaw}deg)`,
+              transform: `translate3d(${scene17SwayX}px, ${scene17BobY}px, 0) scale(${scene17Scale})`,
               transformOrigin: "50% 50%",
             }}
           >
