@@ -30,7 +30,7 @@ function getActiveSceneId(p, currentId) {
   if (p < 0.958 - (currentId === "scene-11" ? -h : h)) return "scene-11";
   if (p < 0.968 - (currentId === "scene-12" ? -h : h)) return "scene-12";
   if (p < 0.978 - (currentId === "scene-13" ? -h : h)) return "scene-13";
-  if (p < 0.988 - (currentId === "scene-14" ? -h : h)) return "scene-14";
+  if (p < 0.989 - (currentId === "scene-14" ? -h : h)) return "scene-14";
   return "scene-15";
 }
 
@@ -482,47 +482,66 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // Ink reveal for Scene 13 (shows dates immediately on the open scroll!)
   const ink13RevealProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.004, 0), 1);
 
-  // ── 16. Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) (0.978 -> 0.988) ──
-  const scene14Entrance = Math.min(Math.max((scrollProgress - 0.978) / 0.005, 0), 1);
+  // ── 16. Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) (0.976 -> 0.990) ──
+  const scene14Entrance = Math.min(Math.max((scrollProgress - 0.976) / 0.005, 0), 1);
 
-  const scrollOpenProgress = Math.min(Math.max((scrollProgress - 0.978) / 0.008, 0), 1);
+  const scrollOpenProgress = Math.min(Math.max((scrollProgress - 0.976) / 0.007, 0), 1);
   const scrollOpenEase = Math.pow(scrollOpenProgress, 0.95);
-  const scene14Scale = 1.00 + scrollOpenEase * 0.05;
-  const scene14PanY = (1.0 - scrollOpenEase) * 20;
+  const baseScene14Scale = 1.00 + scrollOpenEase * 0.04;
+  const baseScene14PanY = (1.0 - scrollOpenEase) * 20;
 
-  // User: "save the date pe jo close ho rha h usko hta do and right me move hoga and ek dusra scene aayega"
-  // Smooth video-like rightward camera pan: Scene 14 glides leftward out of frame (no roll-shut)
-  const panToScene15Progress = Math.min(Math.max((scrollProgress - 0.987) / 0.007, 0), 1);
-  const panToScene15Ease = Math.sin((panToScene15Progress * Math.PI) / 2); // buttery smooth sine ease
-  const scene14PanX = -panToScene15Ease * 100; // in %
-  const scene14RotateY = -panToScene15Ease * 10; // 3D camera turn angle
-  const scene14Opacity = scene14Entrance * (1.0 - Math.pow(panToScene15Progress, 1.4));
+  // ── True First-Person Camera Movement: Camera Pans Right into Crypt Sanctum ──
+  // User: "ye time thoda bda do like 0.5 sec increase kr do"
+  // Increased camera pan duration (+0.5s transition and widened scroll travel window)
+  const cameraMoveProgress = Math.min(Math.max((scrollProgress - 0.982) / 0.014, 0), 1);
+  // Smooth S-curve acceleration and deceleration for real physical camera motion
+  const cameraMoveEase = 0.5 - 0.5 * Math.cos(cameraMoveProgress * Math.PI);
+  // Rotational pan velocity for dynamic optical motion blur & lens flare streak
+  const panVelocity = Math.sin(cameraMoveProgress * Math.PI);
+  const cameraMotionBlur = panVelocity * 3.8; // px of directional camera motion blur
+  const cameraFlareOpacity = panVelocity * 0.55; // golden candlelight streak across lens
+
+  // Scene 14 (Parchment in Hands): Tilts down, moves toward bottom-left hip, blurs into room
+  const scrollLowerY = cameraMoveEase * 240; // in px, lowers down toward hip
+  const scrollLowerX = -cameraMoveEase * 28; // in %, drops toward bottom-left
+  const scrollTiltX = -cameraMoveEase * 26; // tilts away in 3D perspective
+  const scrollYawY = cameraMoveEase * 20; // turns as camera looks right
+  const scene14Scale = baseScene14Scale * (1.0 - cameraMoveEase * 0.14);
+  const scene14PanY = baseScene14PanY + scrollLowerY;
+  const scene14PanX = scrollLowerX;
+  const scene14Blur = cameraMoveEase * 5.0; // depth of field focus pull
+  const scene14Opacity = scene14Entrance * Math.max(1.0 - Math.pow(cameraMoveProgress, 1.3), 0);
 
   // Ink reveal for Scene 14:
-  const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.978) / 0.004, 0), 1);
+  const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.976) / 0.004, 0), 1);
   const ink14RevealProgress = inkRevealProgress;
 
-  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.987 -> 1.00) ──
-  // User: "ek dusra scene aayega wo scene mai isme attach krra hu wo aayega and aisa effect like ek video jaisa feel aaye"
-  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.987) / 0.005, 0), 1);
+  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.982 -> 1.00) ──
+  // User: "ye time thoda bda do like 0.5 sec increase kr do"
+  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.982) / 0.003, 0), 1);
   const scene15Opacity = scene15Entrance;
 
-  // Smooth video camera motion in Scene 15:
-  // Glides into frame from right matching the pan, then dollies forward with continuous steadicam video feel
-  const scene15EnterPanX = (1.0 - panToScene15Ease) * 100; // in %
-  const scene15EnterRotateY = (1.0 - panToScene15Ease) * 10; // in deg
+  // The 3D Camera Pan across Scene 15:
+  // Scene 15 is rendered slightly oversized (scale ~1.18), allowing the camera's gaze to sweep
+  // from the left side (where the altar and the hand holding the rolled scroll cylinder are)
+  // across the center arches to the right wall (the candlelit desk & sacred RULES parchment)!
+  const cameraPanX = 6.0 - cameraMoveEase * 16.0; // sweeps from +6% (left/hand) to -10% (right/rules table)
+  const cameraYawY = 6.0 - cameraMoveEase * 12.0; // camera rotates from +6deg to -6deg
+  const cameraPitchX = -2.5 + cameraMoveEase * 2.5; // tilts up from looking down at scroll (-2.5deg) to eye level (0deg)
+  const cameraRollZ = panVelocity * -1.5; // natural handheld dynamic bank during turn
 
-  // Video Dolly & Camera Drift toward the Rules Table on the right
-  const scene15DollyProgress = Math.min(Math.max((scrollProgress - 0.991) / 0.009, 0), 1);
-  const scene15Scale = 1.00 + scene15DollyProgress * 0.08;
-  const scene15ForwardPanY = -scene15DollyProgress * 15;
-  const scene15DriftX = -scene15DollyProgress * 22; // drifts camera towards the RULES wall
+  // Video Dolly & Exploration after camera settles on the Rules table (0.994 -> 1.000)
+  const roomExploreProgress = Math.min(Math.max((scrollProgress - 0.994) / 0.006, 0), 1);
+  const scene15BaseScale = 1.18 + roomExploreProgress * 0.07;
+  const scene15ForwardPanY = -roomExploreProgress * 16;
+  const scene15DriftX = -roomExploreProgress * 3.5;
 
-  // Steadicam cinematic video breathing
-  const videoBreathCycle = scrollProgress * Math.PI * 48;
-  const videoBobY = Math.sin(videoBreathCycle) * 1.8;
-  const videoSwayX = Math.cos(videoBreathCycle * 0.5) * 1.6;
-  const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.20;
+  // Continuous Steadicam Video Breathing (feels alive like a video, not a still frame)
+  const videoBreathCycle = scrollProgress * Math.PI * 44;
+  const videoBobY = Math.sin(videoBreathCycle) * 2.0;
+  const videoSwayX = Math.cos(videoBreathCycle * 0.5) * 1.8;
+  const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.22;
+  const candleFlicker = 1.0 + Math.sin(scrollProgress * Math.PI * 32) * 0.06;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1179,18 +1198,20 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       {/* ── Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) ── */}
       {scene14Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-200 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 will-change-transform transform-gpu"
           style={{
             opacity: scene14Opacity,
-            zIndex: 32,
+            zIndex: 33, // Foreground: scroll held in hands in front of the cathedral
             perspective: "1200px",
+            background: cameraMoveProgress > 0.05 ? "transparent" : "#000000",
           }}
         >
           <div
             className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
             style={{
-              transform: `translate3d(${scene14PanX}%, ${scene14PanY}px, 0) scale(${scene14Scale}) rotateY(${scene14RotateY}deg)`,
-              transformOrigin: "50% 0%",
+              transform: `translate3d(${scene14PanX}%, ${scene14PanY}px, 0) scale(${scene14Scale}) rotateX(${scrollTiltX}deg) rotateY(${scrollYawY}deg) rotateZ(${cameraRollZ * 0.8}deg)`,
+              transformOrigin: "50% 10%",
+              filter: reducedMotion ? "none" : (scene14Blur > 0.2 ? `blur(${scene14Blur}px)` : "none"),
             }}
           >
             <img
@@ -1205,9 +1226,9 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
             <div
               className="absolute inset-0 flex items-center justify-center pointer-events-none px-4"
               style={{
-                opacity: inkRevealProgress,
+                opacity: inkRevealProgress * Math.max(1.0 - cameraMoveEase * 1.5, 0),
                 transform: `scale(${0.94 + inkRevealProgress * 0.06})`,
-                transition: "opacity 0.2s ease-out, transform 0.2s ease-out",
+                transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             >
               <div className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl px-4 sm:px-6 py-2 flex flex-col items-center text-center select-none pointer-events-auto mt-10 sm:mt-14 md:mt-16">
@@ -1276,7 +1297,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
 
           {/* Candlelight Atmosphere on Parchment */}
           <div
-            className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
+            className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
             style={{
               background: `radial-gradient(circle at 50% 60%, rgba(245, 158, 11, 0.18) 0%, transparent 65%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.85) 100%)`,
             }}
@@ -1286,20 +1307,23 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
 
       {/* ── Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) ── */}
       {/* User: "save the date pe jo close ho rha h usko hta do and right me move hoga and ek dusra scene aayega wo scene mai isme attach krra hu wo aayega and aisa effect like ek video jaisa feel aaye" */}
+      {/* User: "aise transition nhi lgana effect dalna h like feel ho ki camera move ho rha h" */}
+      {/* User: "ye time thoda bda do like 0.5 sec increase kr do" */}
       {scene15Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-200 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-700 will-change-transform transform-gpu"
           style={{
             opacity: scene15Opacity,
-            zIndex: 33,
+            zIndex: 32, // Background room layer behind the foreground scroll
             perspective: "1200px",
           }}
         >
           <div
             className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
             style={{
-              transform: `translate3d(calc(${scene15EnterPanX}% + ${scene15DriftX + videoSwayX}px), ${scene15ForwardPanY + videoBobY}px, 0) scale(${scene15Scale}) rotateY(${scene15EnterRotateY}deg) rotateZ(${videoTilt}deg)`,
-              transformOrigin: "60% 50%", // Focuses smoothly toward the inner cathedral hall & rules table
+              transform: `translate3d(calc(${cameraPanX}% + ${scene15DriftX + videoSwayX}px), ${scene15ForwardPanY + videoBobY}px, 0) scale(${scene15BaseScale}) rotateX(${cameraPitchX}deg) rotateY(${cameraYawY}deg) rotateZ(${cameraRollZ + videoTilt}deg)`,
+              transformOrigin: "50% 50%",
+              filter: reducedMotion ? "none" : (cameraMotionBlur > 0.3 ? `blur(${cameraMotionBlur * 0.65}px)` : "none"),
             }}
           >
             <img
@@ -1312,11 +1336,24 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
 
             {/* Steadicam Video Flare: Dynamic Candlelight Warmth in Cathedral */}
             <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
+              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
               style={{
-                background: `radial-gradient(circle at 78% 50%, rgba(245, 158, 11, 0.22) 0%, transparent 45%), radial-gradient(circle at 35% 42%, rgba(220, 38, 38, 0.15) 0%, transparent 50%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.75) 100%)`,
+                background: `radial-gradient(circle at 78% 50%, rgba(245, 158, 11, ${0.20 * candleFlicker}) 0%, transparent 45%), radial-gradient(circle at 35% 42%, rgba(220, 38, 38, 0.15) 0%, transparent 50%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.75) 100%)`,
               }}
             />
+
+            {/* Anamorphic Lens Flare Sweep: Golden light streak flashing when camera pans past candles */}
+            {cameraFlareOpacity > 0.01 && !reducedMotion && (
+              <div
+                className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-500"
+                style={{
+                  opacity: cameraFlareOpacity,
+                  background: `linear-gradient(${105 + cameraMoveEase * 10}deg, transparent 20%, rgba(251, 191, 36, 0.15) 42%, rgba(245, 158, 11, 0.40) 50%, rgba(220, 38, 38, 0.25) 58%, transparent 80%)`,
+                  transform: `translateX(${(cameraMoveEase - 0.5) * 80}%) scaleY(0.85)`,
+                  filter: "blur(6px)",
+                }}
+              />
+            )}
 
             {/* Inscribed Rules Chamber HUD & Telemetry */}
             <div
@@ -1360,14 +1397,14 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               </div>
             </div>
 
-            {/* Subtle Camera Look-Ahead Indicator at the Top */}
+            {/* Subtle Camera Tracking Indicator at the Top */}
             <div
               className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
               style={{
                 opacity: Math.min(Math.max((scrollProgress - 0.989) / 0.004, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.998) / 0.002, 0), 1)),
               }}
             >
-              ✦ CAMERA TRACKING: INNER ALTAR &amp; RULES SANCTUARY ✦
+              ✦ CAMERA PAN: CRYPT ALTAR ➔ OCCULT RULES SANCTUARY ✦
             </div>
           </div>
         </div>
