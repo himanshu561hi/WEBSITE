@@ -30,7 +30,8 @@ function getActiveSceneId(p, currentId) {
   if (p < 0.958 - (currentId === "scene-11" ? -h : h)) return "scene-11";
   if (p < 0.968 - (currentId === "scene-12" ? -h : h)) return "scene-12";
   if (p < 0.978 - (currentId === "scene-13" ? -h : h)) return "scene-13";
-  return "scene-14";
+  if (p < 0.988 - (currentId === "scene-14" ? -h : h)) return "scene-14";
+  return "scene-15";
 }
 
 /**
@@ -109,6 +110,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const scene12 = scenes[10];
   const scene13 = scenes[11];
   const scene14 = scenes[12];
+  const scene15 = scenes[13];
 
   // 1. Accessibility: Detect prefers-reduced-motion
   useEffect(() => {
@@ -139,6 +141,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       scene12?.image,
       scene13?.image,
       scene14?.image,
+      scene15?.image,
     ].forEach((src) => {
       if (src) {
         const img = new Image();
@@ -158,6 +161,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
     scene12?.image,
     scene13?.image,
     scene14?.image,
+    scene15?.image,
   ]);
 
   // ── Repeating Gate Breach Shudders Across Story ──
@@ -478,26 +482,47 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // Ink reveal for Scene 13 (shows dates immediately on the open scroll!)
   const ink13RevealProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.004, 0), 1);
 
-  // ── 16. Scene 14: Fully Opened Ancient Scroll // Grand Finale (home-14.png) (0.978 -> 1.00) ──
-  const scene14Entrance = Math.min(Math.max((scrollProgress - 0.978) / 0.006, 0), 1);
+  // ── 16. Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) (0.978 -> 0.988) ──
+  const scene14Entrance = Math.min(Math.max((scrollProgress - 0.978) / 0.005, 0), 1);
 
-  const scrollOpenProgress = Math.min(Math.max((scrollProgress - 0.978) / 0.010, 0), 1);
+  const scrollOpenProgress = Math.min(Math.max((scrollProgress - 0.978) / 0.008, 0), 1);
   const scrollOpenEase = Math.pow(scrollOpenProgress, 0.95);
-  const scene14Scale = 1.00 + scrollOpenEase * 0.06;
+  const scene14Scale = 1.00 + scrollOpenEase * 0.05;
   const scene14PanY = (1.0 - scrollOpenEase) * 20;
 
-  // Natural reverse-roll shut & fade out as user scrolls past 0.990:
-  // User: "Scroll down krte hi parchment naturally reverse roll hoke fade ho jaye aur next section/chapter shuru ho jaye"
-  const rollShutProgress = Math.min(Math.max((scrollProgress - 0.990) / 0.008, 0), 1);
-  const rollShutEase = Math.pow(rollShutProgress, 1.25);
-  const rollShutPercent = rollShutEase * 48.8;
-
-  // Scene 14 opacity: fades smoothly as parchment rolls shut
-  const scene14Opacity = scene14Entrance * (1.0 - rollShutEase);
+  // User: "save the date pe jo close ho rha h usko hta do and right me move hoga and ek dusra scene aayega"
+  // Smooth video-like rightward camera pan: Scene 14 glides leftward out of frame (no roll-shut)
+  const panToScene15Progress = Math.min(Math.max((scrollProgress - 0.987) / 0.007, 0), 1);
+  const panToScene15Ease = Math.sin((panToScene15Progress * Math.PI) / 2); // buttery smooth sine ease
+  const scene14PanX = -panToScene15Ease * 100; // in %
+  const scene14RotateY = -panToScene15Ease * 10; // 3D camera turn angle
+  const scene14Opacity = scene14Entrance * (1.0 - Math.pow(panToScene15Progress, 1.4));
 
   // Ink reveal for Scene 14:
   const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.978) / 0.004, 0), 1);
   const ink14RevealProgress = inkRevealProgress;
+
+  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.987 -> 1.00) ──
+  // User: "ek dusra scene aayega wo scene mai isme attach krra hu wo aayega and aisa effect like ek video jaisa feel aaye"
+  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.987) / 0.005, 0), 1);
+  const scene15Opacity = scene15Entrance;
+
+  // Smooth video camera motion in Scene 15:
+  // Glides into frame from right matching the pan, then dollies forward with continuous steadicam video feel
+  const scene15EnterPanX = (1.0 - panToScene15Ease) * 100; // in %
+  const scene15EnterRotateY = (1.0 - panToScene15Ease) * 10; // in deg
+
+  // Video Dolly & Camera Drift toward the Rules Table on the right
+  const scene15DollyProgress = Math.min(Math.max((scrollProgress - 0.991) / 0.009, 0), 1);
+  const scene15Scale = 1.00 + scene15DollyProgress * 0.08;
+  const scene15ForwardPanY = -scene15DollyProgress * 15;
+  const scene15DriftX = -scene15DollyProgress * 22; // drifts camera towards the RULES wall
+
+  // Steadicam cinematic video breathing
+  const videoBreathCycle = scrollProgress * Math.PI * 48;
+  const videoBobY = Math.sin(videoBreathCycle) * 1.8;
+  const videoSwayX = Math.cos(videoBreathCycle * 0.5) * 1.6;
+  const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.20;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1154,17 +1179,17 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       {/* ── Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) ── */}
       {scene14Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-300 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-200 will-change-transform transform-gpu"
           style={{
             opacity: scene14Opacity,
             zIndex: 32,
+            perspective: "1200px",
           }}
         >
           <div
             className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
             style={{
-              clipPath: rollShutEase > 0.002 ? `inset(0 ${rollShutPercent}% 0 ${rollShutPercent}% round 2px)` : "none",
-              transform: `translate3d(0, ${scene14PanY + rollShutEase * 30}px, 0) scale(${scene14Scale * (1.0 - rollShutEase * 0.08)})`,
+              transform: `translate3d(${scene14PanX}%, ${scene14PanY}px, 0) scale(${scene14Scale}) rotateY(${scene14RotateY}deg)`,
               transformOrigin: "50% 0%",
             }}
           >
@@ -1180,7 +1205,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
             <div
               className="absolute inset-0 flex items-center justify-center pointer-events-none px-4"
               style={{
-                opacity: Math.max(1.0 - rollShutEase * 1.6, 0) * inkRevealProgress,
+                opacity: inkRevealProgress,
                 transform: `scale(${0.94 + inkRevealProgress * 0.06})`,
                 transition: "opacity 0.2s ease-out, transform 0.2s ease-out",
               }}
@@ -1256,6 +1281,95 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               background: `radial-gradient(circle at 50% 60%, rgba(245, 158, 11, 0.18) 0%, transparent 65%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.85) 100%)`,
             }}
           />
+        </div>
+      )}
+
+      {/* ── Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) ── */}
+      {/* User: "save the date pe jo close ho rha h usko hta do and right me move hoga and ek dusra scene aayega wo scene mai isme attach krra hu wo aayega and aisa effect like ek video jaisa feel aaye" */}
+      {scene15Opacity > 0.005 && (
+        <div
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-200 will-change-transform transform-gpu"
+          style={{
+            opacity: scene15Opacity,
+            zIndex: 33,
+            perspective: "1200px",
+          }}
+        >
+          <div
+            className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
+            style={{
+              transform: `translate3d(calc(${scene15EnterPanX}% + ${scene15DriftX + videoSwayX}px), ${scene15ForwardPanY + videoBobY}px, 0) scale(${scene15Scale}) rotateY(${scene15EnterRotateY}deg) rotateZ(${videoTilt}deg)`,
+              transformOrigin: "60% 50%", // Focuses smoothly toward the inner cathedral hall & rules table
+            }}
+          >
+            <img
+              src={scene15.image}
+              alt="The Crypt Sanctorum & Cathedral of the Occult Rules"
+              className="w-full h-full object-cover object-center pointer-events-none select-none brightness-[1.06] contrast-[1.06]"
+              loading="eager"
+              decoding="async"
+            />
+
+            {/* Steadicam Video Flare: Dynamic Candlelight Warmth in Cathedral */}
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
+              style={{
+                background: `radial-gradient(circle at 78% 50%, rgba(245, 158, 11, 0.22) 0%, transparent 45%), radial-gradient(circle at 35% 42%, rgba(220, 38, 38, 0.15) 0%, transparent 50%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.75) 100%)`,
+              }}
+            />
+
+            {/* Inscribed Rules Chamber HUD & Telemetry */}
+            <div
+              className="absolute bottom-6 sm:bottom-10 right-4 sm:right-10 max-w-sm sm:max-w-md p-4 sm:p-5 rounded-xs bg-black/85 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.9)] pointer-events-auto select-none transition-all duration-300"
+              style={{
+                opacity: Math.min(Math.max((scrollProgress - 0.990) / 0.005, 0), 1),
+                transform: `translate3d(0, ${(1.0 - Math.min(Math.max((scrollProgress - 0.990) / 0.005, 0), 1)) * 20}px, 0)`,
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2 font-mono text-[11px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
+                <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
+                <span>SECTOR 00 // INNER SANCTUM SANCTORUM</span>
+              </div>
+
+              <h3 className="font-ink-cursive text-2xl sm:text-3xl text-stone-100 font-bold leading-tight mb-1">
+                The Sacred Rules of BUILDX
+              </h3>
+
+              <p className="font-mono text-[11px] sm:text-xs text-stone-400 leading-relaxed uppercase mb-3">
+                The altar has accepted the proclamation. Decipher the tenets, obey the occult constraints, and forge your creation.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("case-evidence-section");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="px-3.5 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[11px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  EXPLORE RULES &amp; CASE FILES ➔
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegisterClick}
+                  className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 font-mono text-[11px] sm:text-xs font-bold tracking-wider uppercase rounded-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  ⚡ REGISTER NOW
+                </button>
+              </div>
+            </div>
+
+            {/* Subtle Camera Look-Ahead Indicator at the Top */}
+            <div
+              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
+              style={{
+                opacity: Math.min(Math.max((scrollProgress - 0.989) / 0.004, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.998) / 0.002, 0), 1)),
+              }}
+            >
+              ✦ CAMERA TRACKING: INNER ALTAR &amp; RULES SANCTUARY ✦
+            </div>
+          </div>
         </div>
       )}
 

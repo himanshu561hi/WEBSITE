@@ -11,6 +11,7 @@ import scene11Img from "../assets/scenes/home-11.png";
 import scene12Img from "../assets/scenes/home-12.png";
 import scene13Img from "../assets/scenes/home-13.png";
 import scene14Img from "../assets/scenes/home-14.png";
+import scene15Img from "../assets/scenes/home-15.jpg";
 
 /**
  * sceneConfig.js
@@ -94,6 +95,12 @@ export const scenes = [
     id: "scene-14",
     name: "Save the Date // Hackathon Scroll Proclamation",
     image: scene14Img,
+    nextSceneId: "scene-15",
+  },
+  {
+    id: "scene-15",
+    name: "The Crypt Sanctorum // Cathedral of the Occult Rules",
+    image: scene15Img,
     nextSceneId: null,
   },
 ];

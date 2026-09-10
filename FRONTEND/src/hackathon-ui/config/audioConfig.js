@@ -150,4 +150,13 @@ export const sceneAudioConfig = {
     loop: true,
     continuous: true,
   },
+
+  // ── Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (0.988 -> 1.00) ──
+  "scene-15": {
+    file: "/hackathon-audio/women-crying.mp3",
+    clip: { start: 0.0, end: 14.5 },
+    volume: 0.08, // Haunting ambient weeping reverberating softly in the cathedral
+    loop: true,
+    continuous: true,
+  },
 };
