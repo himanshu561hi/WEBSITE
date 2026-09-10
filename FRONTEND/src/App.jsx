@@ -11,37 +11,93 @@ import { Toaster } from 'react-hot-toast';
 class ChunkErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, isChunkError: false, error: null };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error) {
-    const isChunkLoadFailed =
+
+  static getDerivedStateFromError(error) {
+    const isChunkError =
       error?.name === 'ChunkLoadError' ||
       /Failed to fetch dynamically imported module/i.test(error?.message || '') ||
       /Loading chunk/i.test(error?.message || '') ||
       /MIME type of "text\/html"/i.test(error?.message || '');
-    if (isChunkLoadFailed) {
-      const refreshed = sessionStorage.getItem('chunk_reload');
-      if (!refreshed) {
-        sessionStorage.setItem('chunk_reload', 'true');
-        window.location.reload();
+    return { hasError: true, isChunkError, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ChunkErrorBoundary caught:", error, errorInfo);
+    const isChunkError =
+      error?.name === 'ChunkLoadError' ||
+      /Failed to fetch dynamically imported module/i.test(error?.message || '') ||
+      /Loading chunk/i.test(error?.message || '') ||
+      /MIME type of "text\/html"/i.test(error?.message || '');
+
+    if (isChunkError) {
+      const lastReload = sessionStorage.getItem('chunk_last_reload');
+      const now = Date.now();
+      // Allow auto-reload once within 10 seconds to avoid endless loops
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem('chunk_last_reload', String(now));
+        const targetUrl = new URL(window.location.href);
+        targetUrl.searchParams.set('_v', String(now));
+        window.location.replace(targetUrl.toString());
       }
     }
   }
+
+  handleForceReload = () => {
+    try {
+      sessionStorage.removeItem('chunk_last_reload');
+      sessionStorage.removeItem('chunk_reload');
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((k) => caches.delete(k));
+        });
+      }
+    } catch (_) {}
+    const targetUrl = new URL(window.location.href);
+    targetUrl.searchParams.set('_v', String(Date.now()));
+    window.location.replace(targetUrl.toString());
+  };
+
   render() {
     if (this.state.hasError) {
+      if (this.state.isChunkError) {
+        return (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#fff', backgroundColor: '#0b0f19', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem', fontWeight: 600 }}>Updating Application</h2>
+            <p style={{ opacity: 0.8, marginBottom: '1.5rem', maxWidth: '420px', lineHeight: 1.5 }}>
+              A newer version of Code-A-Nova was deployed. Click below to load the latest update.
+            </p>
+            <button 
+              onClick={this.handleForceReload}
+              style={{ padding: '0.75rem 1.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}
+            >
+              Refresh Now
+            </button>
+          </div>
+        );
+      }
+
       return (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#fff', backgroundColor: '#0b0f19', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem', fontWeight: 600 }}>Updating Application</h2>
-          <p style={{ opacity: 0.8, marginBottom: '1.5rem', maxWidth: '400px', lineHeight: 1.5 }}>A new version of Code-A-Nova was deployed. Please refresh to continue.</p>
-          <button 
-            onClick={() => { sessionStorage.removeItem('chunk_reload'); window.location.reload(); }}
-            style={{ padding: '0.75rem 1.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}
-          >
-            Refresh Now
-          </button>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem', fontWeight: 600 }}>Something went wrong</h2>
+          <p style={{ opacity: 0.8, marginBottom: '1.5rem', maxWidth: '420px', lineHeight: 1.5 }}>
+            An unexpected error occurred while loading this view.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button 
+              onClick={this.handleForceReload}
+              style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}
+            >
+              Reload Page
+            </button>
+            <button 
+              onClick={() => { window.location.href = '/'; }}
+              style={{ padding: '0.75rem 1.5rem', background: '#374151', color: '#fff', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       );
     }
