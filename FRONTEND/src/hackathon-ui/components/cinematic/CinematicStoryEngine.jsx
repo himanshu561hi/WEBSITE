@@ -1546,43 +1546,6 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
             }}
           />
-          {/* Interactive Bottom Control Dock */}
-          <div
-            className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-2.5 sm:p-3 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none flex flex-col sm:flex-row items-center justify-between gap-2.5"
-            style={{
-              opacity: Math.min(Math.max((scrollProgress - 0.9986) / 0.001, 0), 1),
-              transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9986) / 0.001, 0), 1)) * 10}px, 0)`,
-            }}
-          >
-            <div className="flex flex-col text-left">
-              <div className="flex items-center gap-2 mb-0.5 font-mono text-[10px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
-                <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
-                <span>PHASES 01–07 SEALED // READY TO COMMENCE</span>
-              </div>
-              <div className="font-mono text-[10px] sm:text-xs text-stone-300 tracking-wide">
-                Online 36-Hr Sprint • ₹50,000+ Bounties • Entry ₹49/team • Nov 1-2, 2026
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById("case-evidence-section");
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="px-3 sm:px-4 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                CASE FILES ➤
-              </button>
-              <button
-                type="button"
-                onClick={handleRegisterClick}
-                className="px-3 sm:px-4 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                ⚡ REGISTER NOW
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
