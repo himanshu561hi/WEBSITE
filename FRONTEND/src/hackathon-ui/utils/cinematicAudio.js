@@ -12,6 +12,12 @@ class CinematicAudioManager {
     this.ambientAudio = null;
     this.gateAudio = null;
     this.dossierAudio = null;
+    this.movementAudio = null;
+    this.swishAudio = null;
+    this.footstepAudio = null;
+    this.isFootstepPlaying = false;
+    this.footstepIdleTimer = null;
+    this.footstepFadeRaf = null;
     this.fadeRaf = null;
     this.isMuted = false;
     this.isInitialized = false;
@@ -21,6 +27,153 @@ class CinematicAudioManager {
     if (typeof window === "undefined" || this.isInitialized) return;
     this.isInitialized = true;
     this.ambientAudio = null;
+  }
+
+  /**
+   * User: "chalne step and gate.mp3 is voice se steps wala sound lga do pure jagah jb bhi scroll ho to sound aaye chalne ka"
+   * User: "and voice exactly mt paste kr dena"
+   * Uses clean extracted walking footsteps from step and gate.mp3 without gate slams.
+   * Plays in seamless loop when scrolling; smoothly pauses when scrolling stops.
+   */
+  startFootsteps(targetVolume = 0.32) {
+    if (this.isMuted) return;
+    const vol = Math.min(Math.max(0.15, targetVolume), 0.45);
+
+    if (!this.footstepAudio) {
+      const audio = new Audio("/hackathon-audio/footsteps-clean.wav");
+      audio.preload = "auto";
+      audio.loop = true;
+      audio.volume = 0;
+      this.footstepAudio = audio;
+    }
+
+    const audio = this.footstepAudio;
+
+    if (this.footstepFadeRaf) {
+      cancelAnimationFrame(this.footstepFadeRaf);
+      this.footstepFadeRaf = null;
+    }
+
+    if (audio.paused) {
+      audio.play().catch(() => {});
+      this.isFootstepPlaying = true;
+    }
+
+    // Smoothly fade in volume over 120ms
+    const startVol = audio.volume;
+    const startTime = performance.now();
+    const duration = 120;
+
+    const fadeInStep = (now) => {
+      const elapsed = now - startTime;
+      const p = Math.min(elapsed / duration, 1);
+      try {
+        audio.volume = Math.min(startVol + (vol - startVol) * p, vol);
+      } catch {}
+      if (p < 1 && !audio.paused && !this.isMuted) {
+        this.footstepFadeRaf = requestAnimationFrame(fadeInStep);
+      } else {
+        this.footstepFadeRaf = null;
+      }
+    };
+    this.footstepFadeRaf = requestAnimationFrame(fadeInStep);
+
+    // Reset idle timer: if user stops scrolling for 180ms, smoothly fade out & pause
+    if (this.footstepIdleTimer) {
+      clearTimeout(this.footstepIdleTimer);
+    }
+    this.footstepIdleTimer = setTimeout(() => {
+      this.stopFootsteps(180);
+    }, 180);
+  }
+
+  stopFootsteps(fadeDurationMs = 180) {
+    if (!this.footstepAudio || this.footstepAudio.paused) return;
+    const audio = this.footstepAudio;
+
+    if (this.footstepFadeRaf) {
+      cancelAnimationFrame(this.footstepFadeRaf);
+      this.footstepFadeRaf = null;
+    }
+
+    const startVol = audio.volume;
+    const startTime = performance.now();
+
+    const fadeOutStep = (now) => {
+      const elapsed = now - startTime;
+      const p = Math.min(elapsed / fadeDurationMs, 1);
+      try {
+        audio.volume = Math.max(0, startVol * (1 - p));
+      } catch {}
+      if (p < 1) {
+        this.footstepFadeRaf = requestAnimationFrame(fadeOutStep);
+      } else {
+        this.footstepFadeRaf = null;
+        try {
+          audio.pause();
+        } catch {}
+        this.isFootstepPlaying = false;
+      }
+    };
+    this.footstepFadeRaf = requestAnimationFrame(fadeOutStep);
+  }
+
+  /**
+   * User: "and also mai move hone ka bhi sound lgana chahta hu wobhi dekhta hu add kr deta hu to move ho like abhi jo new ham rules ka add krenge usme kaam aayega baki agag khi aur dekho agar lga ho acha lge to accordingly lga skte ho movement.mp3 and voice exactly mt paste kr dena"
+   * Plays cinematic camera pan whoosh during Scene 14 -> Scene 15 transition into the Rules cathedral!
+   * Volume: tuned to strictly 28-35% (0.32).
+   */
+  playMovementPan(volume = 0.32) {
+    if (this.isMuted) return;
+    const clampedVolume = Math.min(Math.max(0.15, volume), 0.40);
+
+    try {
+      if (this.movementAudio) {
+        try {
+          this.movementAudio.pause();
+          this.movementAudio.currentTime = 0;
+        } catch {}
+      }
+      const audio = new Audio("/hackathon-audio/movement-pan.wav");
+      audio.preload = "auto";
+      audio.volume = clampedVolume;
+      audio.play().catch(() => {
+        const fallback = new Audio("/hackathon-audio/movement.mp3");
+        fallback.currentTime = 2.5;
+        fallback.volume = clampedVolume;
+        fallback.play().catch(() => {});
+        this.movementAudio = fallback;
+      });
+      this.movementAudio = audio;
+    } catch (e) {}
+  }
+
+  /**
+   * Quick motion / body turn swish for camera pull-backs & scroll lifting
+   */
+  playMovementSwish(volume = 0.25) {
+    if (this.isMuted) return;
+    const clampedVolume = Math.min(Math.max(0.12, volume), 0.35);
+
+    try {
+      if (this.swishAudio) {
+        try {
+          this.swishAudio.pause();
+          this.swishAudio.currentTime = 0;
+        } catch {}
+      }
+      const audio = new Audio("/hackathon-audio/movement-swish.wav");
+      audio.preload = "auto";
+      audio.volume = clampedVolume;
+      audio.play().catch(() => {
+        const fallback = new Audio("/hackathon-audio/movement.mp3");
+        fallback.currentTime = 1.0;
+        fallback.volume = clampedVolume;
+        fallback.play().catch(() => {});
+        this.swishAudio = fallback;
+      });
+      this.swishAudio = audio;
+    } catch (e) {}
   }
 
   /**
@@ -108,14 +261,33 @@ class CinematicAudioManager {
     requestAnimationFrame(step);
   }
 
-  // Silenced to prevent collision with master "step and gate.mp3"
-  playFootstep() {}
+  // Backwards-compatible alias for single footstep triggers
+  playFootstep(volume = 0.32) {
+    this.startFootsteps(volume);
+  }
+
   playDoorOpenCreak() {}
   playLockUnlatch() {}
 
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.isMuted) {
+      if (this.footstepAudio) {
+        try {
+          this.footstepAudio.pause();
+        } catch {}
+        this.isFootstepPlaying = false;
+      }
+      if (this.movementAudio) {
+        try {
+          this.movementAudio.pause();
+        } catch {}
+      }
+      if (this.swishAudio) {
+        try {
+          this.swishAudio.pause();
+        } catch {}
+      }
       if (this.gateAudio) {
         try {
           this.gateAudio.pause();

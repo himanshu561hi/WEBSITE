@@ -233,29 +233,70 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   }, [scrollProgress]);
 
   // ── Repeating Footsteps Across Entire Journey ("step and gate ko pure pe lgana h and repeat kr kr ke") ──
-  const isWalking = scrollProgress > 0.002 && scrollProgress < 0.988;
+  // User: "chalne step and gate.mp3 is voice se steps wala sound lga do pure jagah jb bhi scroll ho to sound aaye chalne ka"
+  // User: "and voice exactly mt paste kr dena"
+  // Plays clean extracted walking footsteps from step and gate.mp3 across the entire journey whenever scrolling
+  const isWalking = scrollProgress > 0.001 && scrollProgress < 0.999;
   const stepCycle = scrollProgress * Math.PI * 64;
   const footDrop = Math.abs(Math.sin(stepCycle));
   const walkBobY = isWalking ? (footDrop * 5.5 - 2.75) : 0;
   const walkSwayX = isWalking ? Math.sin(stepCycle * 0.5) * 4.5 : 0;
   const walkTilt = isWalking ? Math.sin(stepCycle * 0.5) * 0.40 : 0;
 
-  const lastStepIndexRef = useRef(-1);
   const prevScrollRef = useRef(scrollProgress);
 
   useEffect(() => {
     const scrollDelta = Math.abs(scrollProgress - prevScrollRef.current);
     prevScrollRef.current = scrollProgress;
 
-    // Trigger footstep on each step landing while user is actively scrolling
-    if (isWalking && scrollDelta > 0.0002) {
-      const currentStep = Math.floor(scrollProgress * 64);
-      if (currentStep !== lastStepIndexRef.current) {
-        lastStepIndexRef.current = currentStep;
-        cinematicAudio.playFootstep(0.32);
-      }
+    // Trigger footstep sound loop while user is actively scrolling anywhere across the journey
+    if (isWalking && scrollDelta > 0.00015) {
+      cinematicAudio.startFootsteps(0.32);
     }
   }, [scrollProgress, isWalking]);
+
+  // ── Movement Sound Triggers (movement.mp3) ──
+  // User: "and also mai move hone ka bhi sound lgana chahta hu wobhi dekhta hu add kr deta hu to move ho like abhi jo new ham rules ka add krenge usme kaam aayega baki agag khi aur dekho agar lga ho acha lge to accordingly lga skte ho movement.mp3 and voice exactly mt paste kr dena"
+  const movementRulesTriggeredRef = useRef(false);
+  const movementTrapdoorTriggeredRef = useRef(false);
+  const movementScrollTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasUserScrolledRef.current) return;
+
+    // 1. Camera Pan into Scene 15: The Cathedral of Occult Rules (0.982 -> 0.996)
+    // Plays full camera pan whoosh as the perspective turns right to reveal the rules altar
+    if (scrollProgress >= 0.983 && scrollProgress <= 0.995) {
+      if (!movementRulesTriggeredRef.current) {
+        movementRulesTriggeredRef.current = true;
+        cinematicAudio.playMovementPan(0.32);
+      }
+    } else if (scrollProgress < 0.978 || scrollProgress > 0.998) {
+      movementRulesTriggeredRef.current = false;
+    }
+
+    // 2. Scene 06 -> 07: Trapdoor Hatch Open & Camera Pull-Back (0.63 -> 0.72)
+    // Physical camera crane pull-back whoosh
+    if (scrollProgress >= 0.635 && scrollProgress <= 0.72) {
+      if (!movementTrapdoorTriggeredRef.current) {
+        movementTrapdoorTriggeredRef.current = true;
+        cinematicAudio.playMovementPan(0.26);
+      }
+    } else if (scrollProgress < 0.62 || scrollProgress > 0.74) {
+      movementTrapdoorTriggeredRef.current = false;
+    }
+
+    // 3. Scene 12 -> 13: Hand Reach & Scroll Unrolling (0.958 -> 0.972)
+    // Quick motion swish as the investigator reaches forward and lifts the ancient scroll
+    if (scrollProgress >= 0.959 && scrollProgress <= 0.972) {
+      if (!movementScrollTriggeredRef.current) {
+        movementScrollTriggeredRef.current = true;
+        cinematicAudio.playMovementSwish(0.26);
+      }
+    } else if (scrollProgress < 0.952 || scrollProgress > 0.976) {
+      movementScrollTriggeredRef.current = false;
+    }
+  }, [scrollProgress]);
 
   // ── 4. Scene 01: Ghost in Corridor (0.00 -> 0.12) ──
   const p1 = Math.min(Math.max(scrollProgress / 0.12, 0), 1);

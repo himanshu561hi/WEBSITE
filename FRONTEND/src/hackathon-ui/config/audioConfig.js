@@ -21,56 +21,36 @@
 
 export const sceneAudioConfig = {
   global: {
-    file: "/hackathon-audio/step and gate.mp3",
-    clip: { start: 2.5, end: 8.0 },
-    volume: 0.50,
-    trigger: "scroll",
-    fadeIn: 0.35,
-    fadeOut: 0.40,
-    loop: true,
+    file: null,
   },
 
   // ── Scene 01: The Abandoned Corridor (0.00 -> 0.10) ──
-  // Walking approach towards presence: Footsteps from step and gate.mp3 (2.5s -> 8.0s)
+  // Walking footsteps handled continuously on scroll by dedicated footsteps engine
   "scene-01": {
-    file: "/hackathon-audio/step and gate.mp3",
-    clip: { start: 2.5, end: 8.0 },
-    volume: 0.50,
-    loop: true,
+    file: null,
   },
 
   // ── Scene 02: The Open Gate Vault (0.09 -> 0.20) ──
-  // Approaching the corridor open iron gate
   "scene-02": {
-    file: "/hackathon-audio/step and gate.mp3",
-    clip: { start: 0.0, end: 2.5 },
-    volume: 0.48,
-    loop: false,
+    file: null,
   },
 
   // ── Scene 03: The Investigation Chamber Walk (0.20 -> 0.36) ──
-  // User: "ye page ke content aane ka and also voice jo yha pe h wo match nhi kr rha to kuch foog effect ya kuch voice me manage kro taki feel ho is content ke sath se wo feel generate hue hai"
-  // Eerie low-key muffled room footsteps allowing the holographic classified incident reveal & chamber fog to breathe
+  // Footsteps on scroll; ambient chamber fog and sound-effect.mp3 breathe cleanly
   "scene-03": {
-    file: "/hackathon-audio/step and gate.mp3",
-    clip: { start: 16.5, end: 20.0 },
-    volume: 0.18, // Subtly lowered so sound effect.mp3 and chamber fog define the atmosphere
-    loop: true,
+    file: null,
   },
 
   // ── Scene 06: The Blackboard Manifest (0.36 -> 0.60) ──
-  // Dedicated "black board chalk.mp3" writes on the chalkboard; ambient voice muted
+  // Dedicated "black board chalk.mp3" writes on the chalkboard
   "scene-06": {
     file: null,
   },
 
   // ── Scene 07: Subterranean Trapdoor Hatch Approach (0.60 -> 0.77) ──
-  // Approaching the open floor trapdoor hatch: Walkway steps (22.0s -> 28.0s)
+  // Trapdoor approach footsteps on scroll; movement whoosh on pull-back
   "scene-07": {
-    file: "/hackathon-audio/step and gate.mp3",
-    clip: { start: 22.0, end: 28.0 },
-    volume: 0.48,
-    loop: true,
+    file: null,
   },
 
   // ── Scene 08: Subterranean Staircase // The Ghost at the Gate (0.77 -> 0.86) ──
