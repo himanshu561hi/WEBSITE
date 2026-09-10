@@ -628,30 +628,15 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9936 -> 0.9990) ──
   const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9936) / 0.0018, 0), 1);
   const scene16EntranceEase = 0.5 - 0.5 * Math.cos(scene16Entrance * Math.PI);
-  // Gentle push-forward zoom
-  const scene16Scale = 1.00 + scene16EntranceEase * 0.03;
   const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9980) / 0.0022, 0), 1);
   const scene16FadeOutEase = 0.5 - 0.5 * Math.cos(scene16FadeOut * Math.PI);
   const scene16Opacity = scene16EntranceEase * (1.0 - scene16FadeOutEase);
-  const scene16PivotPanX = 0;
 
-  const rulesBreathCycle = scrollProgress * Math.PI * 48;
-  const rulesBobY = Math.sin(rulesBreathCycle) * 1.0;
-  const rulesSwayX = Math.cos(rulesBreathCycle * 0.5) * 0.8;
-  const rulesTilt = Math.sin(rulesBreathCycle * 0.5) * 0.12;
-
-  // ── 19. Scene 17: Full Page Rules Decree (home-17.jpg) Z-SLIDE ENTRY (0.9978 -> 1.000) ──
-  // User: "last wala image scroll pe slide hoga Z trike se and image screen pe zoom hoke Z me slide hogi ek focus ke sath"
+  // ── 19. Scene 17: Full Page Rules Decree (home-17.jpg) (0.9978 -> 1.000) ──
   const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9978) / 0.003, 0), 1);
-  // Z-axis push-in: starts far away (scale 0.72) and rushes forward into full focus
-  const scene17ZEase = 1.0 - Math.pow(1.0 - scene17Entrance, 2.8); // fast deceleration = realistic inertia
-  const scene17Scale = 0.72 + scene17ZEase * 0.30; // 0.72 -> 1.02 (Z depth to full-screen)
-  // Vignette focus ring tightens as image zooms in: blurry at first, sharp at end
-  const scene17FocusBlur = (1.0 - scene17ZEase) * 6.0; // 6px -> 0px as it lands
-  const scene17Opacity = Math.pow(scene17Entrance, 0.5); // fades in fast initially then settles
-  const scene17BreathCycle = scrollProgress * Math.PI * 52;
-  const scene17BobY = Math.sin(scene17BreathCycle) * 1.2 * scene17ZEase;
-  const scene17SwayX = Math.cos(scene17BreathCycle * 0.5) * 0.9 * scene17ZEase;
+  const scene17Opacity = 0.5 - 0.5 * Math.cos(scene17Entrance * Math.PI); // smooth fade in
+  // Kept: needed to prevent undefined errors for ZEase usage if referenced
+  const scene17ZEase = scene17Entrance;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1492,48 +1477,37 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 16: Approaching the Sanctum Board (home-16.jpg) ── */}
-      {/* Full body image, no top crop, smooth cross-dissolve into Scene 17 */}
+      {/* object-contain with navbar padding: shows 100% full image, no crop, no cut */}
       {scene16Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu flex items-center justify-center pt-16 pb-6 px-2 sm:px-6"
           style={{
             opacity: scene16Opacity,
             zIndex: 34,
-            backgroundColor: "#000",
+            backgroundColor: "#0a0604",
           }}
         >
-          {/* Outer overflow-visible wrapper: negative margins to prevent top-crop */}
-          <div
-            className="absolute will-change-transform transform-gpu"
+          <img
+            src={scene16?.image}
+            alt="Approaching the Sacred Rules & Regulations Sanctum Board"
+            className="w-full h-full max-h-full max-w-full pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
             style={{
-              inset: "-5% -4%",
-              width: "108%",
-              height: "110%",
-              transform: `translate3d(calc(${scene16PivotPanX}px + ${rulesSwayX}px), ${rulesBobY}px, 0) scale(${scene16Scale}) rotateZ(${rulesTilt}deg)`,
-              transformOrigin: "50% 50%",
+              objectFit: "contain",
+              objectPosition: "50% 50%",
             }}
-          >
-            <img
-              src={scene16?.image}
-              alt="Approaching the Sacred Rules & Regulations Sanctum Board"
-              className="w-full h-full object-cover pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
-              style={{ objectPosition: "50% 30%" }}
-              loading="eager"
-              decoding="async"
-            />
-
-            {/* Cathedral Candlelight Radiance */}
-            <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen"
-              style={{
-                background: `radial-gradient(circle at 75% 45%, rgba(245, 158, 11, ${0.22 * candleFlicker}) 0%, transparent 55%), radial-gradient(circle at 20% 60%, rgba(220, 38, 38, 0.16) 0%, transparent 50%)`,
-              }}
-            />
-          </div>
-
-          {/* Sanctum Telemetry Indicator */}
+            loading="eager"
+            decoding="async"
+          />
+          {/* Cathedral Candlelight Radiance */}
           <div
-            className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none"
+            className="absolute inset-0 pointer-events-none mix-blend-screen"
+            style={{
+              background: `radial-gradient(circle at 75% 45%, rgba(245, 158, 11, ${0.22 * candleFlicker}) 0%, transparent 55%), radial-gradient(circle at 20% 60%, rgba(220, 38, 38, 0.16) 0%, transparent 50%)`,
+            }}
+          />
+          {/* Sanctum Telemetry */}
+          <div
+            className="absolute top-20 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/85 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none shadow-md"
             style={{
               opacity: Math.min(Math.max((scrollProgress - 0.9950) / 0.002, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9985) / 0.002, 0), 1)),
             }}
@@ -1544,69 +1518,40 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 17: Full Page Rules & Regulations Board (home-17.jpg) ── */}
-      {/* Z-SLIDE entry: zooms in from far depth (scale 0.72) into full focus, with lens blur snap */}
+      {/* 100% full uncropped display: zero zoom, contain fit with dedicated safe zones for navbar and dock */}
       {scene17Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu flex items-center justify-center pt-16 pb-20 sm:pb-22 px-2 sm:px-6"
           style={{
             opacity: scene17Opacity,
             zIndex: 35,
-            backgroundColor: "#000",
+            backgroundColor: "#0a0604",
           }}
         >
-          {/* Z-depth outer image wrapper — extends beyond viewport to prevent crop during zoom */}
-          <div
-            className="absolute will-change-transform transform-gpu"
+          <img
+            src={scene17?.image}
+            alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
+            className="w-full h-full max-h-full max-w-full pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
             style={{
-              inset: "-6% -5%",
-              width: "110%",
-              height: "112%",
-              transform: `translate3d(${scene17SwayX}px, ${scene17BobY}px, 0) scale(${scene17Scale})`,
-              transformOrigin: "50% 50%",
-              filter: scene17FocusBlur > 0.2 ? `blur(${scene17FocusBlur}px)` : "none",
+              objectFit: "contain",
+              objectPosition: "50% 50%",
             }}
-          >
-            <img
-              src={scene17?.image}
-              alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
-              className="w-full h-full object-cover pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
-              style={{ objectPosition: "50% 30%" }}
-              loading="eager"
-              decoding="async"
-            />
-
-            {/* Dual Sconce Candlelight Glow */}
-            <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen"
-              style={{
-                background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
-              }}
-            />
-          </div>
-
-          {/* Focus vignette: tightens as image lands into view */}
+            loading="eager"
+            decoding="async"
+          />
+          {/* Dual Sconce Candlelight Glow */}
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0 pointer-events-none mix-blend-screen"
             style={{
-              background: `radial-gradient(ellipse 60% 60% at 50% 50%, transparent 0%, rgba(0,0,0,${0.85 * (1.0 - scene17ZEase)}) 100%)`,
+              background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
             }}
           />
-          {/* Top Telemetry Header */}
+          {/* Interactive Bottom Control Dock - positioned cleanly below the rules board */}
           <div
-            className="absolute top-8 sm:top-12 left-1/2 -translate-x-1/2 px-4 py-1 bg-black/85 border border-[#D01820]/70 rounded-xs font-mono text-[10px] sm:text-xs text-[#e5e5e5] tracking-widest uppercase pointer-events-none transition-opacity duration-300 shadow-[0_0_20px_rgba(208,24,32,0.3)]"
+            className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-2.5 sm:p-3 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none flex flex-col sm:flex-row items-center justify-between gap-2.5"
             style={{
-              opacity: Math.min(Math.max((scrollProgress - 0.9988) / 0.0015, 0), 1),
-            }}
-          >
-            ✦ OFFICIAL HACKATHON DECREE // COMPLETE PROCESS RULES ✦
-          </div>
-
-          {/* Interactive Bottom Control Dock */}
-          <div
-            className="absolute bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-3 sm:p-4 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-3"
-            style={{
-              opacity: Math.min(Math.max((scrollProgress - 0.9990) / 0.001, 0), 1),
-              transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9990) / 0.001, 0), 1)) * 14}px, 0)`,
+              opacity: Math.min(Math.max((scrollProgress - 0.9986) / 0.001, 0), 1),
+              transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9986) / 0.001, 0), 1)) * 10}px, 0)`,
             }}
           >
             <div className="flex flex-col text-left">
@@ -1618,7 +1563,6 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
                 Online 36-Hr Sprint • ₹50,000+ Bounties • Entry ₹49/team • Nov 1-2, 2026
               </div>
             </div>
-
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
@@ -1628,7 +1572,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
                 }}
                 className="px-3 sm:px-4 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
               >
-                CASE FILES ➔
+                CASE FILES ➤
               </button>
               <button
                 type="button"
