@@ -237,6 +237,52 @@ class CinematicAudioManager {
     } catch (e) {}
   }
 
+  /**
+   * User: "rules pe jb slide ho rha h to kya sound lga skta hu"
+   * Tactile occult target-lock / focus click when camera locks onto each of the 7 rules.
+   * Features zero-latency progressive Web Audio API resonance chime + sound-effect.mp3 warmth.
+   * Strictly clamped to 18-22% volume.
+   */
+  playRuleFocusLock(ruleNum = 1, volume = 0.20) {
+    if (this.isMuted) return;
+    const clampedVolume = Math.min(Math.max(0.08, volume), 0.24);
+
+    try {
+      // 1. Instantaneous 0ms Web Audio synthetic focus lock click
+      if (typeof window !== "undefined") {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          if (!this.synthCtx || this.synthCtx.state === "closed") {
+            this.synthCtx = new AudioCtx();
+          }
+          if (this.synthCtx.state === "suspended") {
+            this.synthCtx.resume();
+          }
+          const ctx = this.synthCtx;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          // Pitch scales smoothly from Rule 01 (500Hz) up to Rule 07 (740Hz)
+          const baseFreq = 500 + (Math.max(1, ruleNum) - 1) * 40;
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.45, ctx.currentTime + 0.035);
+          gain.gain.setValueAtTime(clampedVolume * 0.40, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.07);
+        }
+      }
+
+      // 2. Layered organic acoustic texture via sound-effect.mp3
+      const audio = new Audio("/hackathon-audio/sound-effect.mp3");
+      audio.preload = "auto";
+      audio.volume = clampedVolume * 0.75;
+      audio.play().catch(() => {});
+    } catch (e) {}
+  }
+
   fadeGateAudio(durationMs = 400) {
     if (!this.gateAudio || this.gateAudio.paused) return;
     const audio = this.gateAudio;

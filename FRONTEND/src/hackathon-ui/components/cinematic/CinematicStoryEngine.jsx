@@ -349,34 +349,34 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   useEffect(() => {
     if (!hasUserScrolledRef.current) return;
 
-    // 1. Camera Pan from Save The Date (Scene 14) into Scene 15 (0.988 -> 0.994)
+    // 1. Camera Pan from Save The Date (Scene 14) into Scene 15 (0.976 -> 0.983)
     // Plays camera pan whoosh as the perspective turns away from the scroll toward the cathedral
-    if (scrollProgress >= 0.988 && scrollProgress <= 0.994) {
+    if (scrollProgress >= 0.976 && scrollProgress <= 0.983) {
       if (!movementRulesTriggeredRef.current) {
         movementRulesTriggeredRef.current = true;
         cinematicAudio.playMovementPan(0.32);
       }
-    } else if (scrollProgress < 0.984 || scrollProgress > 0.998) {
+    } else if (scrollProgress < 0.972 || scrollProgress > 0.986) {
       movementRulesTriggeredRef.current = false;
     }
 
-    // 2. Stepping Forward into Scene 16: Approaching the Rules Wall (0.993 -> 0.996)
-    if (scrollProgress >= 0.993 && scrollProgress <= 0.996) {
+    // 2. Stepping Forward into Scene 16: Approaching the Rules Wall (0.982 -> 0.986)
+    if (scrollProgress >= 0.982 && scrollProgress <= 0.986) {
       if (!movementBoardTriggeredRef.current) {
         movementBoardTriggeredRef.current = true;
         cinematicAudio.playMovementSwish(0.24);
       }
-    } else if (scrollProgress < 0.989 || scrollProgress > 0.998) {
+    } else if (scrollProgress < 0.978 || scrollProgress > 0.990) {
       movementBoardTriggeredRef.current = false;
     }
 
-    // 3. Pivoting Directly in Front: Scene 17 Full Page Rules (0.9965 -> 1.000)
-    if (scrollProgress >= 0.9965 && scrollProgress <= 0.9995) {
+    // 3. Pivoting Directly in Front: Scene 17 Full Page Rules (0.986 -> 0.989)
+    if (scrollProgress >= 0.986 && scrollProgress <= 0.989) {
       if (!movementFullRulesTriggeredRef.current) {
         movementFullRulesTriggeredRef.current = true;
         cinematicAudio.playMovementSwish(0.26);
       }
-    } else if (scrollProgress < 0.995 || scrollProgress > 1.0) {
+    } else if (scrollProgress < 0.982 || scrollProgress > 0.995) {
       movementFullRulesTriggeredRef.current = false;
     }
 
@@ -737,6 +737,43 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // Normalized camera translation percentages:
   const s17TransX = reducedMotion ? 0 : -(s17CamX - 0.5) * s17CamScale * 100;
   const s17TransY = reducedMotion ? 0 : -(s17CamY - 0.5) * s17CamScale * 100;
+
+  // ── Scene 17 Rules Tour Interactive Audio Cues ──
+  const prevTourRuleRef = useRef(0);
+  const diagonalSwishRef = useRef(false);
+  const rule1GlideRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasUserScrolledRef.current) return;
+
+    // 1. Tactile focus lock sound on each rule (01 to 07)
+    if (s17ActiveRuleId > 0 && s17ActiveRuleId !== prevTourRuleRef.current) {
+      prevTourRuleRef.current = s17ActiveRuleId;
+      cinematicAudio.playRuleFocusLock(s17ActiveRuleId, 0.22);
+    } else if (s17ActiveRuleId === 0) {
+      prevTourRuleRef.current = 0;
+    }
+
+    // 2. Initial zoom glide into Rule 01
+    if (scene17TourProgress >= 0.05 && scene17TourProgress <= 0.12) {
+      if (!rule1GlideRef.current) {
+        rule1GlideRef.current = true;
+        cinematicAudio.playMovementPan(0.24);
+      }
+    } else if (scene17TourProgress < 0.02 || scene17TourProgress > 0.18) {
+      rule1GlideRef.current = false;
+    }
+
+    // 3. Dynamic diagonal swoop swish from Rule 04 (Top Right) to Rule 05 (Bottom Left)
+    if (scene17TourProgress >= 0.63 && scene17TourProgress <= 0.72) {
+      if (!diagonalSwishRef.current) {
+        diagonalSwishRef.current = true;
+        cinematicAudio.playMovementSwish(0.30);
+      }
+    } else if (scene17TourProgress < 0.58 || scene17TourProgress > 0.76) {
+      diagonalSwishRef.current = false;
+    }
+  }, [s17ActiveRuleId, scene17TourProgress]);
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
