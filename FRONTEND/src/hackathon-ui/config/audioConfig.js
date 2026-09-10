@@ -140,11 +140,20 @@ export const sceneAudioConfig = {
     continuous: true,
   },
 
-  // ── Scene 16: The Inscribed Rules & Regulations // Sanctum Board ──
+  // ── Scene 16: Approaching the Sanctum Board ──
   "scene-16": {
     file: "/hackathon-audio/women-crying.mp3",
     clip: { start: 0.0, end: 14.5 },
     volume: 0.07,
+    loop: true,
+    continuous: true,
+  },
+
+  // ── Scene 17: Full Page Rules & Regulations Decree ──
+  "scene-17": {
+    file: "/hackathon-audio/women-crying.mp3",
+    clip: { start: 0.0, end: 14.5 },
+    volume: 0.06,
     loop: true,
     continuous: true,
   },

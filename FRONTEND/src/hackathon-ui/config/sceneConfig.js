@@ -13,6 +13,7 @@ import scene13Img from "../assets/scenes/home-13.png";
 import scene14Img from "../assets/scenes/home-14.png";
 import scene15Img from "../assets/scenes/home-15.jpg";
 import scene16Img from "../assets/scenes/home-16.jpg";
+import scene17Img from "../assets/scenes/home-17.jpg";
 
 /**
  * sceneConfig.js
@@ -106,8 +107,14 @@ export const scenes = [
   },
   {
     id: "scene-16",
-    name: "The Inscribed Rules & Regulations // Sanctum Board",
+    name: "Approaching the Sanctum Board // Process Overview",
     image: scene16Img,
+    nextSceneId: "scene-17",
+  },
+  {
+    id: "scene-17",
+    name: "The Sacred Rules & Regulations // Full Sanctum Decrees",
+    image: scene17Img,
     nextSceneId: null,
   },
 ];

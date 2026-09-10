@@ -30,9 +30,10 @@ function getActiveSceneId(p, currentId) {
   if (p < 0.954 - (currentId === "scene-11" ? -h : h)) return "scene-11";
   if (p < 0.963 - (currentId === "scene-12" ? -h : h)) return "scene-12";
   if (p < 0.971 - (currentId === "scene-13" ? -h : h)) return "scene-13";
-  if (p < 0.989 - (currentId === "scene-14" ? -h : h)) return "scene-14";
-  if (p < 0.995 - (currentId === "scene-15" ? -h : h)) return "scene-15";
-  return "scene-16";
+  if (p < 0.988 - (currentId === "scene-14" ? -h : h)) return "scene-14";
+  if (p < 0.9935 - (currentId === "scene-15" ? -h : h)) return "scene-15";
+  if (p < 0.9972 - (currentId === "scene-16" ? -h : h)) return "scene-16";
+  return "scene-17";
 }
 
 /**
@@ -113,6 +114,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const scene14 = scenes[12];
   const scene15 = scenes[13];
   const scene16 = scenes[14];
+  const scene17 = scenes[15];
 
   // 1. Accessibility: Detect prefers-reduced-motion
   useEffect(() => {
@@ -145,6 +147,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       scene14?.image,
       scene15?.image,
       scene16?.image,
+      scene17?.image,
     ].forEach((src) => {
       if (src) {
         const img = new Image();
@@ -166,6 +169,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
     scene14?.image,
     scene15?.image,
     scene16?.image,
+    scene17?.image,
   ]);
 
   // ── Repeating Gate Breach Shudders Across Story ──
@@ -263,6 +267,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // User: "and also mai move hone ka bhi sound lgana chahta hu wobhi dekhta hu add kr deta hu to move ho like abhi jo new ham rules ka add krenge usme kaam aayega baki agag khi aur dekho agar lga ho acha lge to accordingly lga skte ho movement.mp3 and voice exactly mt paste kr dena"
   const movementRulesTriggeredRef = useRef(false);
   const movementBoardTriggeredRef = useRef(false);
+  const movementFullRulesTriggeredRef = useRef(false);
   const movementTrapdoorTriggeredRef = useRef(false);
   const movementScrollTriggeredRef = useRef(false);
 
@@ -280,14 +285,24 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       movementRulesTriggeredRef.current = false;
     }
 
-    // 2. Stepping Forward into Scene 16: The Inscribed Rules & Regulations Wall (0.993 -> 0.998)
-    if (scrollProgress >= 0.993 && scrollProgress <= 0.998) {
+    // 2. Stepping Forward into Scene 16: Approaching the Rules Wall (0.993 -> 0.996)
+    if (scrollProgress >= 0.993 && scrollProgress <= 0.996) {
       if (!movementBoardTriggeredRef.current) {
         movementBoardTriggeredRef.current = true;
         cinematicAudio.playMovementSwish(0.24);
       }
-    } else if (scrollProgress < 0.989 || scrollProgress > 1.0) {
+    } else if (scrollProgress < 0.989 || scrollProgress > 0.998) {
       movementBoardTriggeredRef.current = false;
+    }
+
+    // 3. Pivoting Directly in Front: Scene 17 Full Page Rules (0.9965 -> 1.000)
+    if (scrollProgress >= 0.9965 && scrollProgress <= 0.9995) {
+      if (!movementFullRulesTriggeredRef.current) {
+        movementFullRulesTriggeredRef.current = true;
+        cinematicAudio.playMovementSwish(0.26);
+      }
+    } else if (scrollProgress < 0.995 || scrollProgress > 1.0) {
+      movementFullRulesTriggeredRef.current = false;
     }
 
     // 3. Scene 06 -> 07: Trapdoor Hatch Open & Camera Pull-Back (0.63 -> 0.72)
@@ -579,9 +594,21 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.003, 0), 1);
   const ink14RevealProgress = inkRevealProgress;
 
-  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.988 -> 0.997) ──
+  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.988 -> 0.995) ──
   const scene15Entrance = Math.min(Math.max((scrollProgress - 0.988) / 0.002, 0), 1);
-  const scene15FadeOut = Math.min(Math.max((scrollProgress - 0.994) / 0.0025, 0), 1);
+  // Fast camera step forward into the right wall / rules desk:
+  const boardAdvanceProgress = Math.min(Math.max((scrollProgress - 0.992) / 0.0028, 0), 1);
+  const boardAdvanceEase = Math.pow(boardAdvanceProgress, 1.35);
+  const scene15Scale = (1.18 + boardAdvanceEase * 0.38); // deep optical zoom toward board
+  const scene15PanX = cameraPanX - boardAdvanceEase * 14.0;
+  const scene15PanY = -boardAdvanceEase * 18.0;
+  // Radial/forward camera stride motion blur:
+  const stepMotionBlur = Math.sin(boardAdvanceProgress * Math.PI) * 4.8;
+  // Volumetric candle flare flash as investigator passes the tall candelabras:
+  const stepCandleFlash = Math.sin(boardAdvanceProgress * Math.PI) * 0.70;
+
+  // Snappy focus handoff right as camera reaches the desk (0.9938 -> 0.9948)
+  const scene15FadeOut = Math.min(Math.max((scrollProgress - 0.9938) / 0.0010, 0), 1);
   const scene15Opacity = scene15Entrance * (1.0 - scene15FadeOut);
 
   // The 3D Camera Pan across Scene 15:
@@ -590,30 +617,43 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const cameraPitchX = -2.5 + cameraMoveEase * 2.5; // tilts up from looking down at scroll (-2.5deg) to eye level (0deg)
   const cameraRollZ = panVelocity * -1.5; // natural handheld dynamic bank during turn
 
-  // Video Dolly & Step toward the Rules Board on the Right Wall (0.993 -> 0.997)
-  const boardStepProgress = Math.min(Math.max((scrollProgress - 0.993) / 0.0035, 0), 1);
-  const boardStepEase = Math.pow(boardStepProgress, 1.25);
-  const scene15BaseScale = (1.18 + boardStepEase * 0.14);
-  const scene15ForwardPanY = -boardStepEase * 18;
-  const scene15DriftX = -boardStepEase * 6.0;
-
-  // Continuous Steadicam Video Breathing (feels alive like a video, not a still frame)
+  // Continuous Steadicam Video Breathing
   const videoBreathCycle = scrollProgress * Math.PI * 44;
   const videoBobY = Math.sin(videoBreathCycle) * 2.0;
   const videoSwayX = Math.cos(videoBreathCycle * 0.5) * 1.8;
   const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.22;
   const candleFlicker = 1.0 + Math.sin(scrollProgress * Math.PI * 32) * 0.06;
 
-  // ── 18. Scene 16: The Inscribed Rules & Regulations Sanctum Board (home-16.jpg) (0.9935 -> 1.000) ──
-  // User: "ab iske bad ye chiaye and i think isme bs fade effect se ho jayega tum test kro and kuch aur acha kr skte ho to"
-  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9935) / 0.003, 0), 1);
-  const scene16Opacity = scene16Entrance;
-  // Seamless physical step forward right up to the wooden rules board:
-  const scene16Scale = 1.04 - scene16Entrance * 0.04;
+  // ── 18. Scene 16: Approaching the Sanctum Board (home-16.jpg) (0.9936 -> 0.9972) ──
+  // User: "last image jo fade h usko replace kro and kkuch alag sa lgao abhi to clear pta chal rha h image h so aise kro"
+  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9936) / 0.0012, 0), 1);
+  // Physical camera landing inertia: starts at scale 1.07 and settles into crisp focus
+  const scene16Scale = 1.00 + (1.0 - scene16Entrance) * 0.07;
+  const scene16FadeOut = Math.min(Math.max((scrollProgress - 0.9968) / 0.0012, 0), 1);
+  const scene16Opacity = scene16Entrance * (1.0 - scene16FadeOut);
+
+  // Perspective pivot as investigator turns square in front of the board:
+  const pivotProgress = Math.min(Math.max((scrollProgress - 0.9960) / 0.0018, 0), 1);
+  const pivotEase = 0.5 - 0.5 * Math.cos(pivotProgress * Math.PI);
+  const scene16PivotPanX = -pivotEase * 20.0;
+  const scene16PivotYaw = -pivotEase * 8.0;
+  const scene16Blur = pivotEase * 3.5;
+
   const rulesBreathCycle = scrollProgress * Math.PI * 48;
   const rulesBobY = Math.sin(rulesBreathCycle) * 1.8;
   const rulesSwayX = Math.cos(rulesBreathCycle * 0.5) * 1.5;
   const rulesTilt = Math.sin(rulesBreathCycle * 0.5) * 0.20;
+
+  // ── 19. Scene 17: Full Page Rules & Regulations Decree (home-17.jpg) (0.9968 -> 1.000) ──
+  // User: "and last me full page rules wala h"
+  const scene17Entrance = Math.min(Math.max((scrollProgress - 0.9968) / 0.0012, 0), 1);
+  const scene17Opacity = scene17Entrance;
+  // Camera squares up squarely: starts slightly rotated and aligns perfectly centered
+  const scene17Scale = 1.03 - scene17Entrance * 0.03;
+  const scene17Yaw = (1.0 - scene17Entrance) * 5.0;
+  const scene17BreathCycle = scrollProgress * Math.PI * 52;
+  const scene17BobY = Math.sin(scene17BreathCycle) * 1.4;
+  const scene17SwayX = Math.cos(scene17BreathCycle * 0.5) * 1.2;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1384,7 +1424,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       {/* ── Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) ── */}
       {scene15Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-700 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-500 will-change-transform transform-gpu"
           style={{
             opacity: scene15Opacity,
             zIndex: 32, // Background room layer behind the foreground scroll
@@ -1394,9 +1434,9 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           <div
             className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
             style={{
-              transform: `translate3d(calc(${cameraPanX}% + ${scene15DriftX + videoSwayX}px), ${scene15ForwardPanY + videoBobY}px, 0) scale(${scene15BaseScale}) rotateX(${cameraPitchX}deg) rotateY(${cameraYawY}deg) rotateZ(${cameraRollZ + videoTilt}deg)`,
-              transformOrigin: "50% 50%",
-              filter: reducedMotion ? "none" : (cameraMotionBlur > 0.3 ? `blur(${cameraMotionBlur * 0.65}px)` : "none"),
+              transform: `translate3d(calc(${scene15PanX}% + ${videoSwayX}px), ${scene15PanY + videoBobY}px, 0) scale(${scene15Scale}) rotateX(${cameraPitchX}deg) rotateY(${cameraYawY}deg) rotateZ(${cameraRollZ + videoTilt}deg)`,
+              transformOrigin: "78% 50%", // Deep optical zoom directly toward the rules wall
+              filter: reducedMotion ? "none" : ((cameraMotionBlur + stepMotionBlur) > 0.3 ? `blur(${(cameraMotionBlur + stepMotionBlur) * 0.65}px)` : "none"),
             }}
           >
             <img
@@ -1415,6 +1455,18 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               }}
             />
 
+            {/* Volumetric Candle Flare Flash during fast camera stride */}
+            {stepCandleFlash > 0.05 && !reducedMotion && (
+              <div
+                className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-300"
+                style={{
+                  opacity: stepCandleFlash,
+                  background: "radial-gradient(ellipse 70% 50% at 75% 50%, rgba(245, 158, 11, 0.45) 0%, rgba(220, 38, 38, 0.20) 45%, transparent 75%)",
+                  filter: "blur(8px)",
+                }}
+              />
+            )}
+
             {/* Anamorphic Lens Flare Sweep: Golden light streak flashing when camera pans past candles */}
             {cameraFlareOpacity > 0.01 && !reducedMotion && (
               <div
@@ -1428,11 +1480,11 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               />
             )}
 
-            {/* Subtle Camera Tracking Indicator at the Top */}
+            {/* Camera Tracking Indicator at the Top */}
             <div
               className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
               style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.989) / 0.003, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.995) / 0.002, 0), 1)),
+                opacity: Math.min(Math.max((scrollProgress - 0.989) / 0.003, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9935) / 0.0015, 0), 1)),
               }}
             >
               ✦ CAMERA PAN: CRYPT ALTAR ➔ OCCULT RULES SANCTUARY ✦
@@ -1441,11 +1493,11 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
         </div>
       )}
 
-      {/* ── Scene 16: The Inscribed Rules & Regulations Board (home-16.jpg) ── */}
-      {/* User: "ab iske bad ye chiaye and i think isme bs fade effect se ho jayega tum test kro and kuch aur acha kr skte ho to" */}
+      {/* ── Scene 16: Approaching the Sanctum Board (home-16.jpg) ── */}
+      {/* User: "last image jo fade h usko replace kro and kkuch alag sa lgao abhi to clear pta chal rha h image h so aise kro" */}
       {scene16Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-700 will-change-transform transform-gpu"
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-500 will-change-transform transform-gpu"
           style={{
             opacity: scene16Opacity,
             zIndex: 34,
@@ -1455,13 +1507,14 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           <div
             className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
             style={{
-              transform: `translate3d(${rulesSwayX}px, ${rulesBobY}px, 0) scale(${scene16Scale}) rotateZ(${rulesTilt}deg)`,
+              transform: `translate3d(calc(${scene16PivotPanX}px + ${rulesSwayX}px), ${rulesBobY}px, 0) scale(${scene16Scale}) rotateY(${scene16PivotYaw}deg) rotateZ(${rulesTilt}deg)`,
               transformOrigin: "50% 50%",
+              filter: reducedMotion ? "none" : (scene16Blur > 0.3 ? `blur(${scene16Blur}px)` : "none"),
             }}
           >
             <img
               src={scene16?.image}
-              alt="The Inscribed Rules & Regulations Sanctum Board"
+              alt="Approaching the Sacred Rules & Regulations Sanctum Board"
               className="w-full h-full object-cover object-center pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
               loading="eager"
               decoding="async"
@@ -1475,56 +1528,100 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               }}
             />
 
-            {/* Inscribed Rules Board Interactive Dossier / HUD */}
+            {/* Sanctum Telemetry Indicator at Top */}
             <div
-              className="absolute bottom-6 sm:bottom-10 right-4 sm:right-10 max-w-sm sm:max-w-md p-4 sm:p-5 rounded-xs bg-black/85 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.9)] pointer-events-auto select-none transition-all duration-300"
+              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
               style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.994) / 0.003, 0), 1),
-                transform: `translate3d(0, ${(1.0 - Math.min(Math.max((scrollProgress - 0.994) / 0.003, 0), 1)) * 16}px, 0)`,
+                opacity: Math.min(Math.max((scrollProgress - 0.994) / 0.0015, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9968) / 0.001, 0), 1)),
               }}
             >
-              <div className="flex items-center gap-2 mb-2 font-mono text-[11px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
-                <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
-                <span>SECTOR 00 // THE SACRED RULES &amp; TENETS</span>
+              ✦ STEPPING FORWARD // SANCTUM PROCESS BOARD ✦
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Scene 17: The Full Page Rules & Regulations Board (home-17.jpg) ── */}
+      {/* User: "and then wo ho jane ke bad mai ek image de rha hu wobhi add kro 2 image add krra hu dekho lo dono and last me full page rules wala h" */}
+      {scene17Opacity > 0.005 && (
+        <div
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-500 will-change-transform transform-gpu"
+          style={{
+            opacity: scene17Opacity,
+            zIndex: 35,
+            perspective: "1200px",
+          }}
+        >
+          <div
+            className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
+            style={{
+              transform: `translate3d(${scene17SwayX}px, ${scene17BobY}px, 0) scale(${scene17Scale}) rotateY(${scene17Yaw}deg)`,
+              transformOrigin: "50% 50%",
+            }}
+          >
+            <img
+              src={scene17?.image}
+              alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
+              className="w-full h-full object-cover object-center pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
+              loading="eager"
+              decoding="async"
+            />
+
+            {/* Dual Sconce Candlelight Glow on Left and Right borders */}
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
+              style={{
+                background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.65) 100%)`,
+              }}
+            />
+
+            {/* Top Telemetry Header */}
+            <div
+              className="absolute top-8 sm:top-12 left-1/2 -translate-x-1/2 px-4 py-1 bg-black/85 border border-[#D01820]/70 rounded-xs font-mono text-[10px] sm:text-xs text-[#e5e5e5] tracking-widest uppercase pointer-events-none transition-opacity duration-300 shadow-[0_0_20px_rgba(208,24,32,0.3)]"
+              style={{
+                opacity: Math.min(Math.max((scrollProgress - 0.9972) / 0.001, 0), 1),
+              }}
+            >
+              ✦ OFFICIAL HACKATHON DECREE // COMPLETE PROCESS RULES ✦
+            </div>
+
+            {/* Interactive Bottom Control Dock */}
+            <div
+              className="absolute bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-3 sm:p-4 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-3"
+              style={{
+                opacity: Math.min(Math.max((scrollProgress - 0.9975) / 0.001, 0), 1),
+                transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9975) / 0.001, 0), 1)) * 14}px, 0)`,
+              }}
+            >
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-2 mb-0.5 font-mono text-[10px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
+                  <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
+                  <span>PHASES 01–07 SEALED // READY TO COMMENCE</span>
+                </div>
+                <div className="font-mono text-[10px] sm:text-xs text-stone-300 tracking-wide">
+                  Online 36-Hr Sprint • ₹50,000+ Bounties • Entry ₹49/team • Nov 1-2, 2026
+                </div>
               </div>
 
-              <h3 className="font-ink-cursive text-2xl sm:text-3xl text-stone-100 font-bold leading-tight mb-1">
-                The Sanctum Decrees of BUILDX
-              </h3>
-
-              <p className="font-mono text-[11px] sm:text-xs text-stone-400 leading-relaxed uppercase mb-3">
-                OBSERVE the anomalies. SURVIVE the 36-hour occult challenge. SOLVE the cryptic puzzles. PROCEED only when ready.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     const el = document.getElementById("case-evidence-section");
                     if (el) el.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="px-3.5 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[11px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  className="px-3 sm:px-4 py-1.5 bg-[#D01820] hover:bg-[#b0141b] text-white font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
-                  EXPLORE RULES &amp; CASE FILES ➔
+                  CASE FILES ➔
                 </button>
                 <button
                   type="button"
                   onClick={handleRegisterClick}
-                  className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 font-mono text-[11px] sm:text-xs font-bold tracking-wider uppercase rounded-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  className="px-3 sm:px-4 py-1.5 bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-700 font-mono text-[10px] sm:text-xs font-bold tracking-wider uppercase rounded-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
                   ⚡ REGISTER NOW
                 </button>
               </div>
-            </div>
-
-            {/* Sanctum Telemetry Indicator at Top */}
-            <div
-              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
-              style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.995) / 0.002, 0), 1),
-              }}
-            >
-              ✦ THE SANCTUM BOARD // RULES &amp; REGULATIONS ✦
             </div>
           </div>
         </div>
