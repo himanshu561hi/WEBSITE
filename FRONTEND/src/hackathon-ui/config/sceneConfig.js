@@ -12,6 +12,7 @@ import scene12Img from "../assets/scenes/home-12.png";
 import scene13Img from "../assets/scenes/home-13.png";
 import scene14Img from "../assets/scenes/home-14.png";
 import scene15Img from "../assets/scenes/home-15.jpg";
+import scene16Img from "../assets/scenes/home-16.jpg";
 
 /**
  * sceneConfig.js
@@ -101,6 +102,12 @@ export const scenes = [
     id: "scene-15",
     name: "The Crypt Sanctorum // Cathedral of the Occult Rules",
     image: scene15Img,
+    nextSceneId: "scene-16",
+  },
+  {
+    id: "scene-16",
+    name: "The Inscribed Rules & Regulations // Sanctum Board",
+    image: scene16Img,
     nextSceneId: null,
   },
 ];

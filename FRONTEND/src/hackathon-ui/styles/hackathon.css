@@ -605,3 +605,69 @@
 .animate-classified-scan {
   animation: classifiedScanline 2.8s ease-in-out infinite;
 }
+
+/* ── Scene 14 Handheld Organic Tremor & Realism Enhancers ── */
+@keyframes handheldParchmentTremor {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  16% {
+    transform: translate3d(1.2px, -1.8px, 0) rotate(0.18deg);
+  }
+  35% {
+    transform: translate3d(-1.6px, 1.4px, 0) rotate(-0.22deg);
+  }
+  52% {
+    transform: translate3d(1.8px, 1.5px, 0) rotate(0.16deg);
+  }
+  70% {
+    transform: translate3d(-1.4px, -1.2px, 0) rotate(-0.18deg);
+  }
+  86% {
+    transform: translate3d(0.9px, -0.7px, 0) rotate(0.09deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+.handheld-parchment-tremor {
+  animation: handheldParchmentTremor 3.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes candleFlameParchmentPulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  25% {
+    opacity: 0.97;
+    transform: scale(1.025);
+  }
+  50% {
+    opacity: 0.80;
+    transform: scale(0.99);
+  }
+  75% {
+    opacity: 1.00;
+    transform: scale(1.03);
+  }
+}
+
+.candle-flame-parchment-pulse {
+  animation: candleFlameParchmentPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes bloodInkLivingGlow {
+  0%, 100% {
+    filter: drop-shadow(0 1px 2px rgba(139, 0, 0, 0.40)) drop-shadow(0 0 10px rgba(220, 38, 38, 0.15));
+  }
+  50% {
+    filter: drop-shadow(0 1px 3px rgba(139, 0, 0, 0.65)) drop-shadow(0 0 22px rgba(220, 38, 38, 0.35));
+  }
+}
+
+.blood-ink-living-glow {
+  animation: bloodInkLivingGlow 3.2s ease-in-out infinite;
+}

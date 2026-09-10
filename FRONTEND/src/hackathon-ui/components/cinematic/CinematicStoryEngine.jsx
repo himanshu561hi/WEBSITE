@@ -25,13 +25,14 @@ function getActiveSceneId(p, currentId) {
   if (p < 0.77 - (currentId === "scene-07" ? -h : h)) return "scene-07";
   if (p < 0.86 - (currentId === "scene-08" ? -h : h)) return "scene-08";
   if (p < 0.922 - (currentId === "scene-09" ? -h : h)) return "scene-09";
-  if (p < 0.938 - (currentId === "scene-10" ? -h : h)) return "scene-10";
-  if (p < 0.948 - (currentId === "scene-10-map" ? -h : h)) return "scene-10-map";
-  if (p < 0.958 - (currentId === "scene-11" ? -h : h)) return "scene-11";
-  if (p < 0.968 - (currentId === "scene-12" ? -h : h)) return "scene-12";
-  if (p < 0.978 - (currentId === "scene-13" ? -h : h)) return "scene-13";
+  if (p < 0.936 - (currentId === "scene-10" ? -h : h)) return "scene-10";
+  if (p < 0.944 - (currentId === "scene-10-map" ? -h : h)) return "scene-10-map";
+  if (p < 0.954 - (currentId === "scene-11" ? -h : h)) return "scene-11";
+  if (p < 0.963 - (currentId === "scene-12" ? -h : h)) return "scene-12";
+  if (p < 0.971 - (currentId === "scene-13" ? -h : h)) return "scene-13";
   if (p < 0.989 - (currentId === "scene-14" ? -h : h)) return "scene-14";
-  return "scene-15";
+  if (p < 0.995 - (currentId === "scene-15" ? -h : h)) return "scene-15";
+  return "scene-16";
 }
 
 /**
@@ -111,6 +112,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const scene13 = scenes[11];
   const scene14 = scenes[12];
   const scene15 = scenes[13];
+  const scene16 = scenes[14];
 
   // 1. Accessibility: Detect prefers-reduced-motion
   useEffect(() => {
@@ -142,6 +144,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       scene13?.image,
       scene14?.image,
       scene15?.image,
+      scene16?.image,
     ].forEach((src) => {
       if (src) {
         const img = new Image();
@@ -162,6 +165,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
     scene13?.image,
     scene14?.image,
     scene15?.image,
+    scene16?.image,
   ]);
 
   // ── Repeating Gate Breach Shudders Across Story ──
@@ -258,24 +262,35 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   // ── Movement Sound Triggers (movement.mp3) ──
   // User: "and also mai move hone ka bhi sound lgana chahta hu wobhi dekhta hu add kr deta hu to move ho like abhi jo new ham rules ka add krenge usme kaam aayega baki agag khi aur dekho agar lga ho acha lge to accordingly lga skte ho movement.mp3 and voice exactly mt paste kr dena"
   const movementRulesTriggeredRef = useRef(false);
+  const movementBoardTriggeredRef = useRef(false);
   const movementTrapdoorTriggeredRef = useRef(false);
   const movementScrollTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (!hasUserScrolledRef.current) return;
 
-    // 1. Camera Pan into Scene 15: The Cathedral of Occult Rules (0.982 -> 0.996)
-    // Plays full camera pan whoosh as the perspective turns right to reveal the rules altar
-    if (scrollProgress >= 0.983 && scrollProgress <= 0.995) {
+    // 1. Camera Pan from Save The Date (Scene 14) into Scene 15 (0.988 -> 0.994)
+    // Plays camera pan whoosh as the perspective turns away from the scroll toward the cathedral
+    if (scrollProgress >= 0.988 && scrollProgress <= 0.994) {
       if (!movementRulesTriggeredRef.current) {
         movementRulesTriggeredRef.current = true;
         cinematicAudio.playMovementPan(0.32);
       }
-    } else if (scrollProgress < 0.978 || scrollProgress > 0.998) {
+    } else if (scrollProgress < 0.984 || scrollProgress > 0.998) {
       movementRulesTriggeredRef.current = false;
     }
 
-    // 2. Scene 06 -> 07: Trapdoor Hatch Open & Camera Pull-Back (0.63 -> 0.72)
+    // 2. Stepping Forward into Scene 16: The Inscribed Rules & Regulations Wall (0.993 -> 0.998)
+    if (scrollProgress >= 0.993 && scrollProgress <= 0.998) {
+      if (!movementBoardTriggeredRef.current) {
+        movementBoardTriggeredRef.current = true;
+        cinematicAudio.playMovementSwish(0.24);
+      }
+    } else if (scrollProgress < 0.989 || scrollProgress > 1.0) {
+      movementBoardTriggeredRef.current = false;
+    }
+
+    // 3. Scene 06 -> 07: Trapdoor Hatch Open & Camera Pull-Back (0.63 -> 0.72)
     // Physical camera crane pull-back whoosh
     if (scrollProgress >= 0.635 && scrollProgress <= 0.72) {
       if (!movementTrapdoorTriggeredRef.current) {
@@ -286,14 +301,14 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       movementTrapdoorTriggeredRef.current = false;
     }
 
-    // 3. Scene 12 -> 13: Hand Reach & Scroll Unrolling (0.958 -> 0.972)
+    // 4. Scene 12 -> 13: Hand Reach & Scroll Unrolling (0.950 -> 0.965)
     // Quick motion swish as the investigator reaches forward and lifts the ancient scroll
-    if (scrollProgress >= 0.959 && scrollProgress <= 0.972) {
+    if (scrollProgress >= 0.950 && scrollProgress <= 0.965) {
       if (!movementScrollTriggeredRef.current) {
         movementScrollTriggeredRef.current = true;
         cinematicAudio.playMovementSwish(0.26);
       }
-    } else if (scrollProgress < 0.952 || scrollProgress > 0.976) {
+    } else if (scrollProgress < 0.944 || scrollProgress > 0.970) {
       movementScrollTriggeredRef.current = false;
     }
   }, [scrollProgress]);
@@ -483,13 +498,13 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const mapScale = 0.96 + mapRaiseEase * 0.08 + (scrollProgress - 0.934) * 0.3;
   const mapVerifiedProgress = Math.min(Math.max((scrollProgress - 0.934) / 0.008, 0), 1);
 
-  // ── 13. Scene 11: Sacrificial Altar Front View // "aur zoom hoga" (0.944 -> 0.962) ──
-  const scene11Entrance = Math.min(Math.max((scrollProgress - 0.944) / 0.006, 0), 1);
-  const scene11FadeOut = Math.min(Math.max((scrollProgress - 0.958) / 0.006, 0), 1);
+  // ── 13. Scene 11: Sacrificial Altar Front View // "aur zoom hoga" (0.940 -> 0.954) ──
+  const scene11Entrance = Math.min(Math.max((scrollProgress - 0.940) / 0.005, 0), 1);
+  const scene11FadeOut = Math.min(Math.max((scrollProgress - 0.952) / 0.005, 0), 1);
   const scene11Opacity = scene11Entrance * (1.0 - scene11FadeOut);
 
   // Deep forward zoom into the altar: "aur zoom hoga"
-  const altarAdvanceProgress = Math.min(Math.max((scrollProgress - 0.944) / 0.016, 0), 1);
+  const altarAdvanceProgress = Math.min(Math.max((scrollProgress - 0.940) / 0.014, 0), 1);
   const altarEase = Math.pow(altarAdvanceProgress, 1.25);
   const altarStepCycle = altarAdvanceProgress * Math.PI * 10;
   const altarBobY = altarAdvanceProgress > 0 ? (Math.abs(Math.sin(altarStepCycle)) * 7 - 3.5) : 0;
@@ -499,42 +514,49 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const scene11PanY = altarBobY * 0.5; // Top remains anchored
   const scene11PanX = altarSwayX;
 
-  // ── 14. Scene 12: Reaching for the Scroll in Dead Body's Hand (home-12.png) (0.958 -> 0.972) ──
-  const scene12Entrance = Math.min(Math.max((scrollProgress - 0.958) / 0.006, 0), 1);
-  const scene12FadeOut = Math.min(Math.max((scrollProgress - 0.968) / 0.006, 0), 1);
+  // ── 14. Scene 12: Reaching for the Scroll in Dead Body's Hand (home-12.png) (0.950 -> 0.963) ──
+  const scene12Entrance = Math.min(Math.max((scrollProgress - 0.950) / 0.005, 0), 1);
+  const scene12FadeOut = Math.min(Math.max((scrollProgress - 0.961) / 0.005, 0), 1);
   const scene12Opacity = scene12Entrance * (1.0 - scene12FadeOut);
 
-  const scrollReachProgress = Math.min(Math.max((scrollProgress - 0.958) / 0.012, 0), 1);
+  const scrollReachProgress = Math.min(Math.max((scrollProgress - 0.950) / 0.011, 0), 1);
   const scrollReachEase = Math.pow(scrollReachProgress, 1.25);
   const scene12Scale = 1.00 + scrollReachEase * 0.20;
   const scene12PanY = scrollReachEase * 12;
   const scene12PanX = -scrollReachEase * 8;
 
-  // ── 15. Scene 13: Unrolling the Ancient Parchment Scroll (home-13.png) (0.968 -> 0.982) ──
-  const scene13Entrance = Math.min(Math.max((scrollProgress - 0.968) / 0.006, 0), 1);
-  const scene13FadeOut = Math.min(Math.max((scrollProgress - 0.978) / 0.006, 0), 1);
+  // ── 15. Scene 13: Unrolling the Ancient Parchment Scroll (home-13.png) (0.960 -> 0.970) ──
+  const scene13Entrance = Math.min(Math.max((scrollProgress - 0.960) / 0.005, 0), 1);
+  const scene13FadeOut = Math.min(Math.max((scrollProgress - 0.969) / 0.005, 0), 1);
   const scene13Opacity = scene13Entrance * (1.0 - scene13FadeOut);
 
-  const unrollProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.012, 0), 1);
+  const unrollProgress = Math.min(Math.max((scrollProgress - 0.960) / 0.009, 0), 1);
   const unrollEase = Math.pow(unrollProgress, 0.9);
   const scene13Scale = 0.98 + unrollEase * 0.05;
   const scene13PanY = (1.0 - unrollEase) * 35; // Glides smoothly upward into hands
 
   // Ink reveal for Scene 13 (shows dates immediately on the open scroll!)
-  const ink13RevealProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.004, 0), 1);
+  const ink13RevealProgress = Math.min(Math.max((scrollProgress - 0.960) / 0.004, 0), 1);
 
-  // ── 16. Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) (0.976 -> 0.990) ──
-  const scene14Entrance = Math.min(Math.max((scrollProgress - 0.976) / 0.005, 0), 1);
+  // ── 16. Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) (0.968 -> 0.994) ──
+  // User: "ye page bhut km time ke liye aa rha h thoda sa shake ya koi effect dalke thoda time bdao and real wali feel lao"
+  // Extended plateau: scroll sits firmly centered in hands from 0.970 to 0.988 with realistic handheld shake
+  const scene14Entrance = Math.min(Math.max((scrollProgress - 0.968) / 0.004, 0), 1);
 
-  const scrollOpenProgress = Math.min(Math.max((scrollProgress - 0.976) / 0.007, 0), 1);
+  const scrollOpenProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.005, 0), 1);
   const scrollOpenEase = Math.pow(scrollOpenProgress, 0.95);
   const baseScene14Scale = 1.00 + scrollOpenEase * 0.04;
   const baseScene14PanY = (1.0 - scrollOpenEase) * 20;
 
+  // Dual-harmonic organic hand tremor & investigator adrenaline pulse
+  const handShakeCycle = scrollProgress * Math.PI * 75;
+  const handTremorX = Math.sin(handShakeCycle * 1.7) * 2.2 + Math.cos(handShakeCycle * 3.1) * 1.3;
+  const handTremorY = Math.cos(handShakeCycle * 1.3) * 2.6 + Math.sin(handShakeCycle * 2.5) * 1.5;
+  const handTremorRot = Math.sin(handShakeCycle * 0.9) * 0.55 + Math.cos(handShakeCycle * 1.8) * 0.25;
+
   // ── True First-Person Camera Movement: Camera Pans Right into Crypt Sanctum ──
-  // User: "ye time thoda bda do like 0.5 sec increase kr do"
-  // Increased camera pan duration (+0.5s transition and widened scroll travel window)
-  const cameraMoveProgress = Math.min(Math.max((scrollProgress - 0.982) / 0.014, 0), 1);
+  // Camera move starts at 0.988 after user has enjoyed the Save The Date scroll
+  const cameraMoveProgress = Math.min(Math.max((scrollProgress - 0.988) / 0.006, 0), 1);
   // Smooth S-curve acceleration and deceleration for real physical camera motion
   const cameraMoveEase = 0.5 - 0.5 * Math.cos(cameraMoveProgress * Math.PI);
   // Rotational pan velocity for dynamic optical motion blur & lens flare streak
@@ -554,28 +576,26 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const scene14Opacity = scene14Entrance * Math.max(1.0 - Math.pow(cameraMoveProgress, 1.3), 0);
 
   // Ink reveal for Scene 14:
-  const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.976) / 0.004, 0), 1);
+  const inkRevealProgress = Math.min(Math.max((scrollProgress - 0.968) / 0.003, 0), 1);
   const ink14RevealProgress = inkRevealProgress;
 
-  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.982 -> 1.00) ──
-  // User: "ye time thoda bda do like 0.5 sec increase kr do"
-  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.982) / 0.003, 0), 1);
-  const scene15Opacity = scene15Entrance;
+  // ── 17. Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) (0.988 -> 0.997) ──
+  const scene15Entrance = Math.min(Math.max((scrollProgress - 0.988) / 0.002, 0), 1);
+  const scene15FadeOut = Math.min(Math.max((scrollProgress - 0.994) / 0.0025, 0), 1);
+  const scene15Opacity = scene15Entrance * (1.0 - scene15FadeOut);
 
   // The 3D Camera Pan across Scene 15:
-  // Scene 15 is rendered slightly oversized (scale ~1.18), allowing the camera's gaze to sweep
-  // from the left side (where the altar and the hand holding the rolled scroll cylinder are)
-  // across the center arches to the right wall (the candlelit desk & sacred RULES parchment)!
   const cameraPanX = 6.0 - cameraMoveEase * 16.0; // sweeps from +6% (left/hand) to -10% (right/rules table)
   const cameraYawY = 6.0 - cameraMoveEase * 12.0; // camera rotates from +6deg to -6deg
   const cameraPitchX = -2.5 + cameraMoveEase * 2.5; // tilts up from looking down at scroll (-2.5deg) to eye level (0deg)
   const cameraRollZ = panVelocity * -1.5; // natural handheld dynamic bank during turn
 
-  // Video Dolly & Exploration after camera settles on the Rules table (0.994 -> 1.000)
-  const roomExploreProgress = Math.min(Math.max((scrollProgress - 0.994) / 0.006, 0), 1);
-  const scene15BaseScale = 1.18 + roomExploreProgress * 0.07;
-  const scene15ForwardPanY = -roomExploreProgress * 16;
-  const scene15DriftX = -roomExploreProgress * 3.5;
+  // Video Dolly & Step toward the Rules Board on the Right Wall (0.993 -> 0.997)
+  const boardStepProgress = Math.min(Math.max((scrollProgress - 0.993) / 0.0035, 0), 1);
+  const boardStepEase = Math.pow(boardStepProgress, 1.25);
+  const scene15BaseScale = (1.18 + boardStepEase * 0.14);
+  const scene15ForwardPanY = -boardStepEase * 18;
+  const scene15DriftX = -boardStepEase * 6.0;
 
   // Continuous Steadicam Video Breathing (feels alive like a video, not a still frame)
   const videoBreathCycle = scrollProgress * Math.PI * 44;
@@ -583,6 +603,17 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
   const videoSwayX = Math.cos(videoBreathCycle * 0.5) * 1.8;
   const videoTilt = Math.sin(videoBreathCycle * 0.5) * 0.22;
   const candleFlicker = 1.0 + Math.sin(scrollProgress * Math.PI * 32) * 0.06;
+
+  // ── 18. Scene 16: The Inscribed Rules & Regulations Sanctum Board (home-16.jpg) (0.9935 -> 1.000) ──
+  // User: "ab iske bad ye chiaye and i think isme bs fade effect se ho jayega tum test kro and kuch aur acha kr skte ho to"
+  const scene16Entrance = Math.min(Math.max((scrollProgress - 0.9935) / 0.003, 0), 1);
+  const scene16Opacity = scene16Entrance;
+  // Seamless physical step forward right up to the wooden rules board:
+  const scene16Scale = 1.04 - scene16Entrance * 0.04;
+  const rulesBreathCycle = scrollProgress * Math.PI * 48;
+  const rulesBobY = Math.sin(rulesBreathCycle) * 1.8;
+  const rulesSwayX = Math.cos(rulesBreathCycle * 0.5) * 1.5;
+  const rulesTilt = Math.sin(rulesBreathCycle * 0.5) * 0.20;
 
   const handleRegisterClick = () => {
     const regBtn = document.querySelector("[data-register-trigger]");
@@ -1237,6 +1268,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 14: Fully Opened Ancient Scroll // Save The Date Proclamation (home-14.png) ── */}
+      {/* User: "ye page bhut km time ke liye aa rha h thoda sa shake ya koi effect dalke thoda time bdao and real wali feel lao" */}
       {scene14Opacity > 0.005 && (
         <div
           className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 will-change-transform transform-gpu"
@@ -1250,106 +1282,106 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           <div
             className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
             style={{
-              transform: `translate3d(${scene14PanX}%, ${scene14PanY}px, 0) scale(${scene14Scale}) rotateX(${scrollTiltX}deg) rotateY(${scrollYawY}deg) rotateZ(${cameraRollZ * 0.8}deg)`,
+              transform: `translate3d(calc(${scene14PanX}% + ${reducedMotion ? 0 : handTremorX}px), ${scene14PanY + (reducedMotion ? 0 : handTremorY)}px, 0) scale(${scene14Scale}) rotateX(${scrollTiltX}deg) rotateY(${scrollYawY}deg) rotateZ(${(cameraRollZ * 0.8) + (reducedMotion ? 0 : handTremorRot)}deg)`,
               transformOrigin: "50% 10%",
               filter: reducedMotion ? "none" : (scene14Blur > 0.2 ? `blur(${scene14Blur}px)` : "none"),
             }}
           >
-            <img
-              src={scene14.image}
-              alt="Fully Unrolled Ancient Scroll Proclamation"
-              className="w-full h-full object-cover object-top pointer-events-none select-none brightness-[1.07] contrast-[1.06]"
-              loading="eager"
-              decoding="async"
-            />
+            {/* Subtle organic breathing & quivering hand tremor for realism */}
+            <div className={`relative w-full h-full flex items-center justify-center ${reducedMotion ? "" : "handheld-parchment-tremor"}`}>
+              <img
+                src={scene14.image}
+                alt="Fully Unrolled Ancient Scroll Proclamation"
+                className="w-full h-full object-cover object-top pointer-events-none select-none brightness-[1.07] contrast-[1.06]"
+                loading="eager"
+                decoding="async"
+              />
 
-            {/* Inscribed Parchment Calligraphy & Save The Date Manifesto */}
-            <div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none px-4"
-              style={{
-                opacity: inkRevealProgress * Math.max(1.0 - cameraMoveEase * 1.5, 0),
-                transform: `scale(${0.94 + inkRevealProgress * 0.06})`,
-                transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-            >
-              <div className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl px-4 sm:px-6 py-2 flex flex-col items-center text-center select-none pointer-events-auto mt-10 sm:mt-14 md:mt-16">
-                
-                {/* Vintage Occult Heading in Handwritten Black Ink */}
-                <div className="font-ink-cursive text-xs sm:text-sm md:text-base text-[#0a0a0a] font-bold tracking-widest uppercase leading-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]">
-                  ✦ OFFICIAL SANCTUM PROCLAMATION ✦
-                </div>
-
-                {/* Big Antique Headline: SAVE THE DATE in Handwritten Blood Red Ink */}
-                <h2 className="font-ink-cursive text-4xl sm:text-5xl md:text-6xl text-[#8b0000] font-black tracking-tight my-0 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]">
-                  Save The Date
-                </h2>
-
-                {/* Subtitle in Handwritten Black Ink */}
-                <div className="font-ink-cursive text-sm sm:text-lg md:text-xl text-[#0f0f0f] font-bold leading-tight my-0.5">
-                  BUILDX: The Occult Innovation Hackathon
-                </div>
-
-                {/* Decorative Separator Flourish in Dark Red */}
-                <div className="w-28 sm:w-44 h-[1.5px] bg-gradient-to-r from-transparent via-[#8b0000]/60 to-transparent my-0.5 sm:my-1" />
-
-                {/* THE DATES - Weathered Blood-Red Handwriting on a single line */}
-                <div className="my-0.5">
-                  <div className="font-ink-cursive text-2xl sm:text-4xl md:text-5xl text-[#8b0000] font-black leading-tight whitespace-nowrap drop-shadow-[0_1px_2px_rgba(139,0,0,0.3)]">
-                    1st &amp; 2nd November 2026
+              {/* Inscribed Parchment Calligraphy & Save The Date Manifesto */}
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none px-4"
+                style={{
+                  opacity: inkRevealProgress * Math.max(1.0 - cameraMoveEase * 1.5, 0),
+                  transform: `scale(${0.94 + inkRevealProgress * 0.06})`,
+                  transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              >
+                <div className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl px-4 sm:px-6 py-2 flex flex-col items-center text-center select-none pointer-events-auto mt-10 sm:mt-14 md:mt-16">
+                  
+                  {/* Vintage Occult Heading in Handwritten Black Ink */}
+                  <div className="font-ink-cursive text-xs sm:text-sm md:text-base text-[#0a0a0a] font-bold tracking-widest uppercase leading-none drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]">
+                    ✦ OFFICIAL SANCTUM PROCLAMATION ✦
                   </div>
-                  <div className="font-ink-cursive text-xs sm:text-base md:text-lg text-[#111111] font-bold leading-tight">
-                    ⚡ 36-Hour Challenge // ₹50,000+ Cash &amp; Bounties
+
+                  {/* Big Antique Headline: SAVE THE DATE in Handwritten Blood Red Ink */}
+                  <h2 className={`font-ink-cursive text-4xl sm:text-5xl md:text-6xl text-[#8b0000] font-black tracking-tight my-0 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)] ${reducedMotion ? "" : "blood-ink-living-glow"}`}>
+                    Save The Date
+                  </h2>
+
+                  {/* Subtitle in Handwritten Black Ink */}
+                  <div className="font-ink-cursive text-sm sm:text-lg md:text-xl text-[#0f0f0f] font-bold leading-tight my-0.5">
+                    BUILDX: The Occult Innovation Hackathon
                   </div>
-                </div>
 
-                {/* Venue & Organizer details in Handwritten Black Ink */}
-                <div className="font-ink-cursive text-xs sm:text-base md:text-lg text-[#0a0a0a] font-bold leading-tight my-0.5 max-w-lg">
-                  Venue: Online &nbsp;✦&nbsp; Organized by Code-A-Nova
-                </div>
+                  {/* Decorative Separator Flourish in Dark Red */}
+                  <div className="w-28 sm:w-44 h-[1.5px] bg-gradient-to-r from-transparent via-[#8b0000]/60 to-transparent my-0.5 sm:my-1" />
 
-                {/* Interactive Action Buttons */}
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
-                  <button
-                    type="button"
-                    onClick={handleCalendarClick}
-                    className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#0a0a0a] hover:bg-[#1f1f1f] text-[#ffffff] border-2 border-[#8b0000] rounded-xs font-ink-hand text-xs sm:text-sm font-bold tracking-wide shadow-md flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
-                  >
-                    <span>📅</span>
-                    <span>{calendarAdded ? "✓ MARKED IN CALENDAR!" : "MARK IN YOUR CALENDAR"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRegisterClick}
-                    className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#8b0000] hover:bg-[#a00000] text-[#ffffff] border-2 border-[#0a0a0a] rounded-xs font-ink-hand text-xs sm:text-sm font-bold tracking-wide shadow-md flex items-center gap-1.5 cursor-pointer select-none hover:scale-105 active:scale-95 transition-transform"
-                  >
-                    <span>⚡ ENTER THE ARENA // REGISTER ➔</span>
-                  </button>
-                </div>
-
-                {calendarAdded && (
-                  <div className="mt-1 font-ink-cursive text-xs sm:text-sm text-[#0f5132] font-bold tracking-wide bg-[#d1e7dd]/90 px-3 py-0.5 rounded-xs border border-[#0f5132]/40 animate-pulse">
-                    ✓ Google Calendar opened &amp; .ics file downloaded! Nov 1-2, 2026 // Online // Code-A-Nova
+                  {/* THE DATES - Weathered Blood-Red Handwriting on a single line */}
+                  <div className="my-0.5">
+                    <div className={`font-ink-cursive text-2xl sm:text-4xl md:text-5xl text-[#8b0000] font-black leading-tight whitespace-nowrap drop-shadow-[0_1px_2px_rgba(139,0,0,0.3)] ${reducedMotion ? "" : "blood-ink-living-glow"}`}>
+                      1st &amp; 2nd November 2026
+                    </div>
+                    <div className="font-ink-cursive text-xs sm:text-base md:text-lg text-[#111111] font-bold leading-tight">
+                      ⚡ 36-Hour Challenge // ₹50,000+ Cash &amp; Bounties
+                    </div>
                   </div>
-                )}
+
+                  {/* Venue & Organizer details in Handwritten Black Ink */}
+                  <div className="font-ink-cursive text-xs sm:text-base md:text-lg text-[#0a0a0a] font-bold leading-tight my-0.5 max-w-lg">
+                    Venue: Online &nbsp;✦&nbsp; Organized by Code-A-Nova
+                  </div>
+
+                  {/* Interactive Action Buttons */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
+                    <button
+                      type="button"
+                      onClick={handleCalendarClick}
+                      className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#0a0a0a] hover:bg-[#1f1f1f] text-[#ffffff] border-2 border-[#8b0000] rounded-xs font-ink-hand text-xs sm:text-sm font-bold tracking-wide shadow-md flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                    >
+                      <span>📅</span>
+                      <span>{calendarAdded ? "✓ MARKED IN CALENDAR!" : "MARK IN YOUR CALENDAR"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRegisterClick}
+                      className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#8b0000] hover:bg-[#a00000] text-[#ffffff] border-2 border-[#0a0a0a] rounded-xs font-ink-hand text-xs sm:text-sm font-bold tracking-wide shadow-md flex items-center gap-1.5 cursor-pointer select-none hover:scale-105 active:scale-95 transition-transform"
+                    >
+                      <span>⚡ ENTER THE ARENA // REGISTER ➔</span>
+                    </button>
+                  </div>
+
+                  {calendarAdded && (
+                    <div className="mt-1 font-ink-cursive text-xs sm:text-sm text-[#0f5132] font-bold tracking-wide bg-[#d1e7dd]/90 px-3 py-0.5 rounded-xs border border-[#0f5132]/40 animate-pulse">
+                      ✓ Google Calendar opened &amp; .ics file downloaded! Nov 1-2, 2026 // Online // Code-A-Nova
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Candlelight Atmosphere on Parchment */}
+          {/* Candlelight Atmosphere & Organic Flame Pulse on Parchment */}
           <div
-            className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
+            className={`absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700 ${reducedMotion ? "" : "candle-flame-parchment-pulse"}`}
             style={{
-              background: `radial-gradient(circle at 50% 60%, rgba(245, 158, 11, 0.18) 0%, transparent 65%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.85) 100%)`,
+              background: `radial-gradient(circle at 50% 60%, rgba(245, 158, 11, 0.20) 0%, transparent 65%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.85) 100%)`,
             }}
           />
         </div>
       )}
 
       {/* ── Scene 15: The Crypt Sanctorum // Cathedral of the Occult Rules (home-15.jpg) ── */}
-      {/* User: "save the date pe jo close ho rha h usko hta do and right me move hoga and ek dusra scene aayega wo scene mai isme attach krra hu wo aayega and aisa effect like ek video jaisa feel aaye" */}
-      {/* User: "aise transition nhi lgana effect dalna h like feel ho ki camera move ho rha h" */}
-      {/* User: "ye time thoda bda do like 0.5 sec increase kr do" */}
       {scene15Opacity > 0.005 && (
         <div
           className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-700 will-change-transform transform-gpu"
@@ -1396,25 +1428,72 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               />
             )}
 
-            {/* Inscribed Rules Chamber HUD & Telemetry */}
+            {/* Subtle Camera Tracking Indicator at the Top */}
+            <div
+              className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
+              style={{
+                opacity: Math.min(Math.max((scrollProgress - 0.989) / 0.003, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.995) / 0.002, 0), 1)),
+              }}
+            >
+              ✦ CAMERA PAN: CRYPT ALTAR ➔ OCCULT RULES SANCTUARY ✦
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Scene 16: The Inscribed Rules & Regulations Board (home-16.jpg) ── */}
+      {/* User: "ab iske bad ye chiaye and i think isme bs fade effect se ho jayega tum test kro and kuch aur acha kr skte ho to" */}
+      {scene16Opacity > 0.005 && (
+        <div
+          className="absolute inset-0 w-full h-full pointer-events-none bg-black transition-opacity duration-700 will-change-transform transform-gpu"
+          style={{
+            opacity: scene16Opacity,
+            zIndex: 34,
+            perspective: "1200px",
+          }}
+        >
+          <div
+            className="relative w-full h-full will-change-transform transform-gpu flex items-center justify-center"
+            style={{
+              transform: `translate3d(${rulesSwayX}px, ${rulesBobY}px, 0) scale(${scene16Scale}) rotateZ(${rulesTilt}deg)`,
+              transformOrigin: "50% 50%",
+            }}
+          >
+            <img
+              src={scene16?.image}
+              alt="The Inscribed Rules & Regulations Sanctum Board"
+              className="w-full h-full object-cover object-center pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
+              loading="eager"
+              decoding="async"
+            />
+
+            {/* Cathedral Candlelight Radiance on the Carved Rules */}
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-screen transition-opacity duration-700"
+              style={{
+                background: `radial-gradient(circle at 75% 45%, rgba(245, 158, 11, ${0.22 * candleFlicker}) 0%, transparent 55%), radial-gradient(circle at 20% 60%, rgba(220, 38, 38, 0.16) 0%, transparent 50%), radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)`,
+              }}
+            />
+
+            {/* Inscribed Rules Board Interactive Dossier / HUD */}
             <div
               className="absolute bottom-6 sm:bottom-10 right-4 sm:right-10 max-w-sm sm:max-w-md p-4 sm:p-5 rounded-xs bg-black/85 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.9)] pointer-events-auto select-none transition-all duration-300"
               style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.990) / 0.005, 0), 1),
-                transform: `translate3d(0, ${(1.0 - Math.min(Math.max((scrollProgress - 0.990) / 0.005, 0), 1)) * 20}px, 0)`,
+                opacity: Math.min(Math.max((scrollProgress - 0.994) / 0.003, 0), 1),
+                transform: `translate3d(0, ${(1.0 - Math.min(Math.max((scrollProgress - 0.994) / 0.003, 0), 1)) * 16}px, 0)`,
               }}
             >
               <div className="flex items-center gap-2 mb-2 font-mono text-[11px] sm:text-xs text-[#D01820] font-bold tracking-widest uppercase">
                 <span className="w-2 h-2 rounded-full bg-[#D01820] animate-ping" />
-                <span>SECTOR 00 // INNER SANCTUM SANCTORUM</span>
+                <span>SECTOR 00 // THE SACRED RULES &amp; TENETS</span>
               </div>
 
               <h3 className="font-ink-cursive text-2xl sm:text-3xl text-stone-100 font-bold leading-tight mb-1">
-                The Sacred Rules of BUILDX
+                The Sanctum Decrees of BUILDX
               </h3>
 
               <p className="font-mono text-[11px] sm:text-xs text-stone-400 leading-relaxed uppercase mb-3">
-                The altar has accepted the proclamation. Decipher the tenets, obey the occult constraints, and forge your creation.
+                OBSERVE the anomalies. SURVIVE the 36-hour occult challenge. SOLVE the cryptic puzzles. PROCEED only when ready.
               </p>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1438,14 +1517,14 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               </div>
             </div>
 
-            {/* Subtle Camera Tracking Indicator at the Top */}
+            {/* Sanctum Telemetry Indicator at Top */}
             <div
               className="absolute top-16 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none transition-opacity duration-300"
               style={{
-                opacity: Math.min(Math.max((scrollProgress - 0.989) / 0.004, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.998) / 0.002, 0), 1)),
+                opacity: Math.min(Math.max((scrollProgress - 0.995) / 0.002, 0), 1),
               }}
             >
-              ✦ CAMERA PAN: CRYPT ALTAR ➔ OCCULT RULES SANCTUARY ✦
+              ✦ THE SANCTUM BOARD // RULES &amp; REGULATIONS ✦
             </div>
           </div>
         </div>

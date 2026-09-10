@@ -60,8 +60,8 @@ const StoryExperience = memo(function StoryExperience() {
 
   return (
     <div className="relative w-full bg-black text-[#e5e5e5]">
-      {/* 1. Master Cinematic Paranormal Story Stage (Scene 01 -> Scene 14 Scroll Proclamation) */}
-      <div ref={trackRef} className="relative w-full" style={{ height: "2200vh" }}>
+      {/* 1. Master Cinematic Paranormal Story Stage (Scene 01 -> Scene 16 Rules Proclamation) */}
+      <div ref={trackRef} className="relative w-full" style={{ height: "2600vh" }}>
         <div className="sticky top-0 w-full h-screen overflow-hidden z-10 bg-black">
           <CinematicStoryEngine scrollProgress={scrollProgress} />
         </div>
