@@ -1477,10 +1477,10 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 16: Approaching the Sanctum Board (home-16.jpg) ── */}
-      {/* object-contain with navbar padding: shows 100% full image, no crop, no cut */}
+      {/* Edge-to-edge full width (no side space), anchored to top under navbar, bottom cut cleanly */}
       {scene16Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu flex items-center justify-center pt-16 pb-6 px-2 sm:px-6"
+          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu overflow-hidden pt-14 sm:pt-16 pb-0 px-0"
           style={{
             opacity: scene16Opacity,
             zIndex: 34,
@@ -1490,10 +1490,10 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           <img
             src={scene16?.image}
             alt="Approaching the Sacred Rules & Regulations Sanctum Board"
-            className="w-full h-full max-h-full max-w-full pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
+            className="w-full h-full pointer-events-none select-none brightness-[1.06] contrast-[1.07]"
             style={{
-              objectFit: "contain",
-              objectPosition: "50% 50%",
+              objectFit: "cover",
+              objectPosition: "center top",
             }}
             loading="eager"
             decoding="async"
@@ -1507,7 +1507,7 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           />
           {/* Sanctum Telemetry */}
           <div
-            className="absolute top-20 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/85 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none shadow-md"
+            className="absolute top-16 sm:top-18 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/85 border border-red-900/60 rounded-xs font-mono text-[10px] sm:text-xs text-stone-400 tracking-widest uppercase pointer-events-none shadow-md"
             style={{
               opacity: Math.min(Math.max((scrollProgress - 0.9950) / 0.002, 0), 1) * (1 - Math.min(Math.max((scrollProgress - 0.9985) / 0.002, 0), 1)),
             }}
@@ -1518,10 +1518,10 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
       )}
 
       {/* ── Scene 17: Full Page Rules & Regulations Board (home-17.jpg) ── */}
-      {/* 100% full uncropped display: zero zoom, contain fit with dedicated safe zones for navbar and dock */}
+      {/* Edge-to-edge full width (no side space), anchored to top under navbar, bottom cut cleanly */}
       {scene17Opacity > 0.005 && (
         <div
-          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu flex items-center justify-center pt-16 pb-20 sm:pb-22 px-2 sm:px-6"
+          className="absolute inset-0 w-full h-full pointer-events-none will-change-transform transform-gpu overflow-hidden pt-14 sm:pt-16 pb-0 px-0"
           style={{
             opacity: scene17Opacity,
             zIndex: 35,
@@ -1531,10 +1531,10 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
           <img
             src={scene17?.image}
             alt="Full Page Sacred Rules & Regulations Board - BUILDX Hackathon Process"
-            className="w-full h-full max-h-full max-w-full pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
+            className="w-full h-full pointer-events-none select-none brightness-[1.05] contrast-[1.06]"
             style={{
-              objectFit: "contain",
-              objectPosition: "50% 50%",
+              objectFit: "cover",
+              objectPosition: "center top",
             }}
             loading="eager"
             decoding="async"
@@ -1546,9 +1546,9 @@ const CinematicStoryEngine = memo(function CinematicStoryEngine({
               background: `radial-gradient(circle at 10% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%), radial-gradient(circle at 90% 50%, rgba(245, 158, 11, ${0.18 * candleFlicker}) 0%, transparent 40%)`,
             }}
           />
-          {/* Interactive Bottom Control Dock - positioned cleanly below the rules board */}
+          {/* Interactive Bottom Control Dock */}
           <div
-            className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-2.5 sm:p-3 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none flex flex-col sm:flex-row items-center justify-between gap-2.5"
+            className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-3xl p-2.5 sm:p-3 rounded-xs bg-black/90 backdrop-blur-md border border-[#D01820]/70 shadow-[0_0_35px_rgba(0,0,0,0.95)] pointer-events-auto select-none flex flex-col sm:flex-row items-center justify-between gap-2.5"
             style={{
               opacity: Math.min(Math.max((scrollProgress - 0.9986) / 0.001, 0), 1),
               transform: `translate3d(-50%, ${(1.0 - Math.min(Math.max((scrollProgress - 0.9986) / 0.001, 0), 1)) * 10}px, 0)`,
