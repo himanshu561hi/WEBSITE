@@ -124,10 +124,14 @@ const getDashboardInfo = async (req, res) => {
         targetInternship.internshipType ||
         getInternshipType(targetInternship.duration);
 
+      const isSummerType = internshipType === "Summer/Winter Intern" || internshipType === "Summer Intern";
+      const isNormalType = internshipType === "Normal Intern" || internshipType === "Normal" || !isSummerType;
+      const internDomainNorm = (targetInternship.domain || "").trim().toLowerCase();
+
       let projects = [];
-      if (internshipType === "Summer/Winter Intern") {
+      if (isSummerType) {
         projects = allSummerProjects
-          .filter((p) => p.domain === targetInternship.domain)
+          .filter((p) => (p.domain || "").trim().toLowerCase() === internDomainNorm)
           .map((p) => {
             const assignedRepo = targetInternship.assignedRepos?.find(
               (r) => r.projectId.toString() === p._id.toString(),
@@ -152,17 +156,29 @@ const getDashboardInfo = async (req, res) => {
 
       let assignedNormalTasks = targetInternship.assignedNormalTasks || [];
       let fullNormalTasks = [];
-      if (internshipType === "Normal Intern") {
+      if (isNormalType) {
         const domainTasks = allNormalTasks
-          .filter((t) => t.domain === targetInternship.domain)
+          .filter((t) => (t.domain || "").trim().toLowerCase() === internDomainNorm)
           .sort((a, b) => a.monthNumber - b.monthNumber);
 
         if (domainTasks.length > 0) {
+          const isAug05Batch = targetInternship.startDate && new Date(targetInternship.startDate) >= new Date('2026-08-05T00:00:00.000Z');
+          const tasksPerMonth = isAug05Batch ? 2 : 1;
+
           if (!assignedNormalTasks || assignedNormalTasks.length === 0) {
-            assignedNormalTasks = Array.from({ length: duration }).map((_, idx) => {
+            assignedNormalTasks = [];
+            for (let idx = 0; idx < duration; idx++) {
               const task = domainTasks.find((t) => t.monthNumber === idx + 1);
-              return task ? task.pdfUrl : "";
-            });
+              if (tasksPerMonth === 2) {
+                const t1 = task?.tasks?.[0]?.title || task?.tasks?.[0]?.pdfUrl || task?.pdfUrl || "";
+                const t2 = task?.tasks?.[1]?.title || task?.tasks?.[1]?.pdfUrl || task?.pdfUrl || "";
+                assignedNormalTasks.push(t1);
+                assignedNormalTasks.push(t2);
+              } else {
+                const t1 = task?.tasks?.[0]?.title || task?.tasks?.[0]?.pdfUrl || task?.pdfUrl || "";
+                assignedNormalTasks.push(t1);
+              }
+            }
           }
           // Always send the full tasks metadata for the new UI to handle both multi-tasks and single tasks
           fullNormalTasks = Array.from({ length: duration }).map((_, idx) => {
