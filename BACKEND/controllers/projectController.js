@@ -80,7 +80,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'dummy_key' }
 const isFigmaDomain = (domain) => {
   if (!domain || typeof domain !== 'string') return false;
   const d = domain.toLowerCase();
-  return d.includes('figma') || d.includes('ui/ux') || d.includes('ui / ux') || d.includes('uiux') || d.includes('ux/ui');
+  return d.includes('figma') || d.includes('ui/ux') || d.includes('ui / ux') || d.includes('uiux') || d.includes('ux/ui') || d.includes('graphic');
 };
 
 async function evaluateRepoWithAI(githubLink, projectName, pdfUrl = null, domain = null) {

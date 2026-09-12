@@ -3039,6 +3039,45 @@ const deleteGraphicTask = async (req, res) => {
   }
 };
 
+const directDownloadFile = async (req, res) => {
+  try {
+    const { url, filename } = req.query;
+    if (!url) {
+      return res.status(400).json({ success: false, message: "File URL is required" });
+    }
+
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      return res.status(400).json({ success: false, message: "Invalid URL protocol" });
+    }
+
+    let safeFilename = (filename || "submission_file").replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    const fetchRes = await fetch(url);
+    if (!fetchRes.ok) {
+      return res.status(fetchRes.status).json({ success: false, message: "Failed to download remote file" });
+    }
+
+    const contentType = fetchRes.headers.get("content-type") || "application/octet-stream";
+    if (!safeFilename.includes(".")) {
+      if (contentType.includes("image/jpeg")) safeFilename += ".jpg";
+      else if (contentType.includes("image/png")) safeFilename += ".png";
+      else if (contentType.includes("image/webp")) safeFilename += ".webp";
+      else if (contentType.includes("application/pdf")) safeFilename += ".pdf";
+      else if (contentType.includes("application/zip")) safeFilename += ".zip";
+    }
+
+    res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
+    res.setHeader("Content-Type", contentType);
+
+    const arrayBuffer = await fetchRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.send(buffer);
+  } catch (error) {
+    console.error("[Admin] Direct download error:", error);
+    res.status(500).json({ success: false, message: "Server error downloading file" });
+  }
+};
+
 const getTokenPurchases = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -3149,6 +3188,7 @@ module.exports = {
   assignGraphicTask,
   getGraphicTasks,
   deleteGraphicTask,
+  directDownloadFile,
   getJobPortalSetting,
   toggleJobPortalSetting,
   toggleJobPortalFreeMode,

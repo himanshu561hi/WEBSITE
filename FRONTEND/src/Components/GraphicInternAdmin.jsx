@@ -18,7 +18,8 @@ import {
   Copy,
   Check,
   MessageSquare,
-  Mail
+  Mail,
+  Download
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -82,6 +83,86 @@ const GraphicInternAdmin = ({ BACKEND_URL, authToken }) => {
     sendEmail: true
   });
   const [savingFeedback, setSavingFeedback] = useState(false);
+
+  // Direct download handler for files & Google Drive links
+  const handleDownloadFile = async (url, customName = "design_file") => {
+    if (!url) return;
+
+    // Check for Google Drive file
+    if (url.includes("drive.google.com")) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        const driveDirect = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        window.open(driveDirect, "_blank");
+        toast.success("Google Drive direct download initiated!");
+        return;
+      }
+    }
+
+    try {
+      toast.loading("Preparing download...", { id: "direct-download" });
+
+      let ext = "";
+      try {
+        const urlWithoutQuery = url.split("?")[0].split("#")[0];
+        const parts = urlWithoutQuery.split(".");
+        if (parts.length > 1) {
+          ext = "." + parts.pop();
+        }
+      } catch (e) {}
+
+      const cleanName = customName.replace(/[^a-zA-Z0-9_-]/g, "_") + (ext && !customName.endsWith(ext) ? ext : "");
+
+      // 1. Try server direct download proxy (ensures Content-Disposition: attachment without CORS issues)
+      const token = authToken || localStorage.getItem("adminToken");
+      const proxyUrl = `${BACKEND_URL}/api/admin/direct-download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(cleanName)}`;
+      
+      const response = await fetch(proxyUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = cleanName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+        toast.success(`Downloaded: ${cleanName}`, { id: "direct-download" });
+        return;
+      }
+
+      // 2. Cloudinary fl_attachment fallback
+      let fallbackUrl = url;
+      if (url.includes("cloudinary.com") && url.includes("/upload/")) {
+        fallbackUrl = url.replace("/upload/", `/upload/fl_attachment:${encodeURIComponent(cleanName)}/`);
+      }
+      const a = document.createElement("a");
+      a.href = fallbackUrl;
+      a.download = cleanName;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("Download started!", { id: "direct-download" });
+    } catch (err) {
+      console.error("Download error:", err);
+      window.open(url, "_blank");
+      toast.info("Opened file link in browser.", { id: "direct-download" });
+    }
+  };
+
+  const handleDownloadAll = async (fileUrls, prefix = "design") => {
+    if (!fileUrls || fileUrls.length === 0) return;
+    toast.info(`Starting download of ${fileUrls.length} file(s)...`);
+    for (let i = 0; i < fileUrls.length; i++) {
+      await handleDownloadFile(fileUrls[i], `${prefix}_attachment_${i + 1}`);
+      await new Promise(r => setTimeout(r, 600));
+    }
+  };
 
   useEffect(() => {
     fetchInterns();
@@ -887,8 +968,36 @@ const GraphicInternAdmin = ({ BACKEND_URL, authToken }) => {
                           </span>
                         </td>
                         <td className="py-2.5 px-4 border-b text-xs space-y-1">
-                          {res.link && <a href={res.link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline block font-semibold">View Link</a>}
-                          {res.fileUrl && <a href={res.fileUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline block font-semibold">Download File</a>}
+                          {res.link && (
+                            <div className="flex items-center gap-2">
+                              <a href={res.link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                                <ExternalLink className="w-3 h-3" /> View Link
+                              </a>
+                              {res.link.includes("drive.google.com") && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadFile(res.link, res.title || "resource_drive")}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded text-[11px] font-bold cursor-pointer"
+                                >
+                                  <Download className="w-3 h-3 text-amber-600" /> Drive Download
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {res.fileUrl && (
+                            <div className="flex items-center gap-2">
+                              <a href={res.fileUrl} target="_blank" rel="noreferrer" className="text-slate-600 hover:text-blue-600 font-semibold flex items-center gap-1">
+                                <FileText className="w-3 h-3" /> Preview
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadFile(res.fileUrl, res.title || "resource_file")}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[11px] font-bold cursor-pointer transition-all"
+                              >
+                                <Download className="w-3 h-3 text-blue-600" /> Download
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-4 border-b text-center">
                           <button onClick={() => handleDeleteResource(res._id)} className="text-slate-400 hover:text-red-600 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
@@ -1181,22 +1290,71 @@ const GraphicInternAdmin = ({ BACKEND_URL, authToken }) => {
                                       </div>
                                     )}
 
-                                    <div className="space-y-1">
+                                    <div className="space-y-2">
                                       {sub.link && (
-                                        <a href={sub.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold flex items-center gap-1">
-                                          <ExternalLink className="w-3 h-3" /> View Work Link
-                                        </a>
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          <a href={sub.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold flex items-center gap-1">
+                                            <ExternalLink className="w-3 h-3" /> View Work Link
+                                          </a>
+                                          {sub.link.includes("drive.google.com") && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDownloadFile(sub.link, `${intern.name || 'intern'}_${sub.taskTitle || 'drive_project'}`)}
+                                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                                              title="Direct download from Google Drive"
+                                            >
+                                              <Download className="w-3 h-3 text-amber-600" /> Direct Drive Download
+                                            </button>
+                                          )}
+                                        </div>
                                       )}
+
                                       {sub.fileUrl && (
-                                        <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold flex items-center gap-1">
-                                          <FileText className="w-3 h-3" /> View Attached File
-                                        </a>
+                                        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                                          <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-blue-600 font-bold flex items-center gap-1 text-xs">
+                                            <FileText className="w-3.5 h-3.5 text-blue-600" /> View Attached File
+                                          </a>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDownloadFile(sub.fileUrl, `${intern.name || 'intern'}_${sub.taskTitle || 'submission'}`)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                                            title="Direct Download file to computer"
+                                          >
+                                            <Download className="w-3 h-3" /> Direct Download
+                                          </button>
+                                        </div>
                                       )}
-                                      {sub.fileUrls && sub.fileUrls.map((url, fIdx) => (
-                                        <a key={fIdx} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold flex items-center gap-1">
-                                          <FileText className="w-3 h-3" /> Attachment #{fIdx + 1}
-                                        </a>
-                                      ))}
+
+                                      {sub.fileUrls && sub.fileUrls.length > 0 && (
+                                        <div className="space-y-1.5">
+                                          {sub.fileUrls.length > 1 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDownloadAll(sub.fileUrls, `${intern.name || 'intern'}_${sub.taskTitle || 'task'}`)}
+                                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[11px] font-bold transition-all cursor-pointer shadow-2xs mb-1"
+                                            >
+                                              <Download className="w-3 h-3" /> Download All ({sub.fileUrls.length} Files)
+                                            </button>
+                                          )}
+
+                                          {sub.fileUrls.map((url, fIdx) => (
+                                            <div key={fIdx} className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                                              <a key={fIdx} href={url} target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-blue-600 font-bold flex items-center gap-1 text-xs">
+                                                <FileText className="w-3.5 h-3.5 text-blue-600" /> Attachment #{fIdx + 1}
+                                              </a>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDownloadFile(url, `${intern.name || 'intern'}_${sub.taskTitle || 'submission'}_file${fIdx + 1}`)}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                                                title="Direct Download file"
+                                              >
+                                                <Download className="w-3 h-3" /> Download
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
                                       {!sub.link && !sub.fileUrl && (!sub.fileUrls || sub.fileUrls.length === 0) && (
                                         <span className="text-slate-400">No link/files attached</span>
                                       )}

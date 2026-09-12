@@ -1093,21 +1093,36 @@ const getMyQuizzes = async (req, res) => {
 
 const submitGraphicDesign = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { link, linkedinCaption, instagramCaption, taskTitle, taskId } = req.body;
+    const userId = req.user?.id || req.user?._id || req.user?.unifiedUserId || req.user?.userId;
+    const { link, linkedinCaption, instagramCaption, taskTitle, taskId, internshipId, studentId } = req.body;
     let fileUrls = [];
-
-    if (!linkedinCaption || !instagramCaption) {
-      return res.status(400).json({ message: "Both LinkedIn and Instagram captions are required" });
-    }
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Find the graphic designer internship (excluding rejected)
-    const internshipIndex = user.internships.findIndex(
-      i => (i.domain === 'Graphic Designer' || i.domain === 'Graphic Design') && !i.rejected?.isRejected
-    );
+    // Find the graphic designer internship (prioritize by internshipId, then studentId, then domain matching)
+    let internshipIndex = -1;
+    if (internshipId) {
+      internshipIndex = user.internships.findIndex(
+        i => i._id.toString() === internshipId.toString()
+      );
+    }
+    if (internshipIndex === -1 && (studentId || req.user?.studentId)) {
+      const targetSid = studentId || req.user?.studentId;
+      internshipIndex = user.internships.findIndex(
+        i => i.studentId === targetSid
+      );
+    }
+    if (internshipIndex === -1) {
+      internshipIndex = user.internships.findIndex(
+        i => i.domain && (i.domain.toLowerCase().includes('graphic') || i.domain.toLowerCase().includes('design')) && !i.rejected?.isRejected
+      );
+    }
+    if (internshipIndex === -1 && user.internships && user.internships.length > 0) {
+      internshipIndex = user.internships.findIndex(i => !i.rejected?.isRejected);
+      if (internshipIndex === -1) internshipIndex = 0;
+    }
+
     if (internshipIndex === -1) {
       return res.status(403).json({ message: "No active Graphic Designer internship found" });
     }
@@ -1130,7 +1145,7 @@ const submitGraphicDesign = async (req, res) => {
       });
       fileUrls = await Promise.all(uploadPromises);
     } else if (req.file) {
-      // Fallback for older frontend version just in case
+      // Fallback for single file upload
       const fileUrl = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { folder: "graphic_submissions", resource_type: "auto" },
@@ -1148,16 +1163,16 @@ const submitGraphicDesign = async (req, res) => {
     }
 
     if (!link && fileUrls.length === 0) {
-      return res.status(400).json({ message: "Please provide either a file or a link" });
+      return res.status(400).json({ message: "Please provide either a file or a project link" });
     }
 
     user.internships[internshipIndex].graphicSubmissions = user.internships[internshipIndex].graphicSubmissions || [];
     user.internships[internshipIndex].graphicSubmissions.push({
-      link: link || "",
+      link: link ? link.trim() : "",
       fileUrls: fileUrls,
-      linkedinCaption,
-      instagramCaption,
-      taskTitle: taskTitle || "",
+      linkedinCaption: linkedinCaption ? linkedinCaption.trim() : "",
+      instagramCaption: instagramCaption ? instagramCaption.trim() : "",
+      taskTitle: taskTitle ? taskTitle.trim() : "Graphic Design Project",
       taskId: taskId || null,
       submittedAt: new Date(),
       status: "Pending"
@@ -1168,19 +1183,24 @@ const submitGraphicDesign = async (req, res) => {
 
   } catch (error) {
     console.error("[Backend] Error submitting graphic design:", error);
-    res.status(500).json({ message: "Server error submitting graphic design" });
+    res.status(500).json({ message: error.message || "Server error submitting graphic design" });
   }
 };
 
 const deleteGraphicSubmission = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?._id || req.user?.unifiedUserId || req.user?.userId;
     const { submissionId } = req.params;
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const internshipIndex = user.internships.findIndex(i => i.domain === 'Graphic Designer' || i.domain === 'Graphic Design');
+    let internshipIndex = user.internships.findIndex(
+      i => i.domain && (i.domain.toLowerCase().includes('graphic') || i.domain.toLowerCase().includes('design'))
+    );
+    if (internshipIndex === -1 && user.internships.length > 0) {
+      internshipIndex = 0;
+    }
     if (internshipIndex === -1) {
       return res.status(403).json({ message: "No active Graphic Designer internship found" });
     }

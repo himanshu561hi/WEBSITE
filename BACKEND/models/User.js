@@ -111,8 +111,8 @@ const userSchema = new mongoose.Schema(
           {
             link: { type: String },
             fileUrls: [{ type: String }],
-            linkedinCaption: { type: String, required: true },
-            instagramCaption: { type: String, required: true },
+            linkedinCaption: { type: String, default: "" },
+            instagramCaption: { type: String, default: "" },
             taskTitle: { type: String, default: "" },
             taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'GraphicTask' },
             submittedAt: { type: Date, default: Date.now },

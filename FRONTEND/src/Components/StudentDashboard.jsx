@@ -51,7 +51,12 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5006';
 const isFigmaDomain = (domain) => {
   if (!domain || typeof domain !== 'string') return false;
   const d = domain.toLowerCase();
-  return d.includes('figma') || d.includes('ui/ux') || d.includes('ui / ux') || d.includes('uiux') || d.includes('ux/ui');
+  return d.includes('figma') || d.includes('ui/ux') || d.includes('ui / ux') || d.includes('uiux') || d.includes('ux/ui') || d.includes('graphic');
+};
+
+const isGraphicDomain = (domain) => {
+  if (!domain || typeof domain !== 'string') return false;
+  return domain.toLowerCase().includes('graphic');
 };
 
 const getResignationStatus = (internship) => {
@@ -1362,6 +1367,7 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
   const [linkedinCaption, setLinkedinCaption] = useState("");
   const [instagramCaption, setInstagramCaption] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -1377,11 +1383,12 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
       return;
     }
     setSubmittingRequest(true);
-    const token = localStorage.getItem("studentToken");
+    const token = localStorage.getItem("studentToken") || localStorage.getItem("token");
     try {
       await axios.post(`${BACKEND_URL}/api/student/request-graphic-resource`, {
         title: requestTitle.trim(),
-        description: requestDescription.trim()
+        description: requestDescription.trim(),
+        internshipId: internship?._id
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1401,27 +1408,30 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
   
   const handleGraphicSubmit = async (e) => {
     e.preventDefault();
-    if (!linkedinCaption || !instagramCaption) {
-      toast.error("Both LinkedIn and Instagram captions are required.");
-      return;
-    }
     if (!link && files.length === 0) {
-      toast.error("Please provide either a link or at least one file.");
+      toast.error("Please provide either a project link or at least one file.");
       return;
     }
     setSubmitting(true);
-    const token = localStorage.getItem("studentToken");
+    const token = localStorage.getItem("studentToken") || localStorage.getItem("token");
     const formData = new FormData();
-    if (link) formData.append("link", link);
+    if (link) formData.append("link", link.trim());
     files.forEach(f => formData.append("files", f));
-    formData.append("linkedinCaption", linkedinCaption);
-    formData.append("instagramCaption", instagramCaption);
-    if (selectedTaskId) {
+    if (linkedinCaption) formData.append("linkedinCaption", linkedinCaption.trim());
+    if (instagramCaption) formData.append("instagramCaption", instagramCaption.trim());
+
+    if (internship?._id) formData.append("internshipId", internship._id);
+    if (internship?.studentId) formData.append("studentId", internship.studentId);
+
+    let chosenTitle = taskTitle.trim();
+    if (!chosenTitle && selectedTaskId) {
       const chosenTask = (graphicTasks || []).find(t => t._id === selectedTaskId);
-      if (chosenTask) {
-        formData.append("taskId", chosenTask._id);
-        formData.append("taskTitle", chosenTask.title);
-      }
+      if (chosenTask) chosenTitle = chosenTask.title;
+    }
+    formData.append("taskTitle", chosenTitle || "Graphic Design Project");
+
+    if (selectedTaskId) {
+      formData.append("taskId", selectedTaskId);
     }
 
     try {
@@ -1437,6 +1447,7 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
       setLinkedinCaption("");
       setInstagramCaption("");
       setSelectedTaskId("");
+      setTaskTitle("");
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
@@ -1801,7 +1812,11 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
               </label>
               <select
                 value={selectedTaskId}
-                onChange={(e) => setSelectedTaskId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedTaskId(e.target.value);
+                  const chosen = (graphicTasks || []).find(t => t._id === e.target.value);
+                  if (chosen) setTaskTitle(chosen.title);
+                }}
                 className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800 text-sm bg-white"
               >
                 <option value="">-- General / Custom Submission (No specific task) --</option>
@@ -1814,7 +1829,17 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
             </div>
           )}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Project / Design Link (Drive, LinkedIn, Instagram etc.)</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Project / Task Title</label>
+            <input 
+              type="text" 
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              placeholder="e.g. Brand Identity Design, Social Media Campaign, Final Project"
+              className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-800 font-medium placeholder:text-slate-400 placeholder:font-normal text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Project / Design Link (Drive, Figma, Canva, Behance etc.)</label>
             <input 
               type="url" 
               value={link}
@@ -1829,7 +1854,7 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
             <div className="h-px bg-slate-200 flex-1"></div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Upload File(s) (Image/PDF)</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Upload File(s) (Image/PDF/Design)</label>
             <input 
               type="file" 
               multiple
@@ -1838,25 +1863,23 @@ const GraphicInternDashboard = ({ internship, graphicResources, graphicTasks, gr
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">LinkedIn Caption <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">LinkedIn Caption <span className="text-slate-400 text-xs font-normal">(Optional)</span></label>
             <textarea 
               value={linkedinCaption}
               onChange={(e) => setLinkedinCaption(e.target.value)}
-              placeholder="Write your LinkedIn caption here..."
-              required
+              placeholder="Write your LinkedIn caption here (optional)..."
               rows={3}
-              className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-800 font-medium placeholder:text-slate-400 placeholder:font-normal"
+              className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-800 font-medium placeholder:text-slate-400 placeholder:font-normal text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Instagram Caption <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Instagram Caption <span className="text-slate-400 text-xs font-normal">(Optional)</span></label>
             <textarea 
               value={instagramCaption}
               onChange={(e) => setInstagramCaption(e.target.value)}
-              placeholder="Write your Instagram caption here..."
-              required
+              placeholder="Write your Instagram caption here (optional)..."
               rows={3}
-              className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-800 font-medium placeholder:text-slate-400 placeholder:font-normal"
+              className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-800 font-medium placeholder:text-slate-400 placeholder:font-normal text-sm"
             />
           </div>
           <button 
@@ -2382,7 +2405,7 @@ const StudentDashboard = () => {
                   const mode = getInternshipMode(internship);
                   return (
                     <div key={internship._id} className="mb-10 animate-fade-in">
-                      {internship.domain === 'Graphic Designer' || internship.domain === 'Graphic Design' ? (
+                      {isGraphicDomain(internship.domain) ? (
                         <GraphicInternDashboard
                           internship={internship}
                           graphicResources={data.graphicResources}

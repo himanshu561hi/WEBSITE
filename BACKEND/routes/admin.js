@@ -859,9 +859,11 @@ const {
   assignGraphicTask,
   getGraphicTasks,
   deleteGraphicTask,
+  directDownloadFile,
   markInternResigned, 
   rejectInternship 
 } = require("../controllers/adminController");
+router.get("/direct-download", auth, verifyAdmin, directDownloadFile);
 router.get("/graphic-interns", auth, verifyAdmin, getGraphicInterns);
 router.post("/update-stipend", auth, verifyAdmin, updateStipendStatus);
 router.post("/graphic-submission-status", auth, verifyAdmin, updateGraphicSubmissionStatus);

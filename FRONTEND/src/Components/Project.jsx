@@ -8,7 +8,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const isFigmaDomain = (domain) => {
   if (!domain || typeof domain !== 'string') return false;
   const d = domain.toLowerCase();
-  return d.includes('figma') || d.includes('ui/ux') || d.includes('ui / ux') || d.includes('uiux') || d.includes('ux/ui');
+  return d.includes('figma') || d.includes('ui/ux') || d.includes('ui / ux') || d.includes('uiux') || d.includes('ux/ui') || d.includes('graphic');
 };
 
 const Project = () => {
@@ -37,7 +37,7 @@ const Project = () => {
   const domains = [
     'Frontend Development', 'Backend Development', 'MERN Stack Development',
     'C Programming', 'Python Development', 'Artificial Intelligence',
-    'Figma or UI/UX', 'Data Science', 'Machine Learning', 'Full Stack Development'
+    'Figma or UI/UX', 'Graphic Designer', 'Data Science', 'Machine Learning', 'Full Stack Development'
   ];
   const durations = ['1 Month', '2 Months', '3 Months'];
 

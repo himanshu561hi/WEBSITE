@@ -3,7 +3,10 @@ const { getDashboardInfo, updateProfile, markAlertRead, submitProjectRepo, final
 const authMiddleware = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max file size
+});
 
 const router = express.Router();
 
@@ -26,8 +29,8 @@ router.post('/track-activity', authMiddleware, trackUserActivity);
 router.post('/ambassador-apply', submitAmbassadorApplication);
 router.post('/ambassador-linkedin-post', authMiddleware, requireRole('campus_ambassador', 'admin'), saveAmbassadorLinkedInPost);
 const { submitGraphicDesign, requestGraphicResource } = require('../controllers/studentController');
-router.post('/submit-graphic', authMiddleware, requireRole('intern', 'admin'), upload.array('files', 10), submitGraphicDesign);
-router.delete('/graphic-submission/:submissionId', authMiddleware, requireRole('intern', 'admin'), deleteGraphicSubmission);
-router.post('/request-graphic-resource', authMiddleware, requireRole('intern', 'admin'), requestGraphicResource);
+router.post('/submit-graphic', authMiddleware, requireRole('student', 'intern', 'admin'), upload.array('files', 10), submitGraphicDesign);
+router.delete('/graphic-submission/:submissionId', authMiddleware, requireRole('student', 'intern', 'admin'), deleteGraphicSubmission);
+router.post('/request-graphic-resource', authMiddleware, requireRole('student', 'intern', 'admin'), requestGraphicResource);
 
 module.exports = router;
